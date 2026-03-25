@@ -1,0 +1,8 @@
+{
+  "query": "SELECT e.id, e.courseId, e.status, c.id as course_id, c.courseName FROM courseEvaluations e LEFT JOIN courses c ON e.courseId = c.id LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3KaHfo5jCyZ9SjS.root --database E5ZvUqwRaQqRfRQJY2QbxS --execute SELECT e.id, e.courseId, e.status, c.id as course_id, c.courseName FROM courseEvaluations e LEFT JOIN courses c ON e.courseId = c.id LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'e5zvuqwraqqrfrqjy2qbxs.courseEvaluations' doesn't exist"
+  ]
+}

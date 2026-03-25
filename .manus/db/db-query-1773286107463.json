@@ -1,0 +1,45 @@
+{
+  "query": "SELECT e.id, e.courseId, e.status, c.id as course_id, c.courseName FROM course_evaluations e LEFT JOIN courses c ON e.courseId = c.id LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3KaHfo5jCyZ9SjS.root --database E5ZvUqwRaQqRfRQJY2QbxS --execute SELECT e.id, e.courseId, e.status, c.id as course_id, c.courseName FROM course_evaluations e LEFT JOIN courses c ON e.courseId = c.id LIMIT 5;",
+  "rows": [
+    {
+      "id": "30002",
+      "courseId": "476",
+      "status": "submitted",
+      "course_id": "476",
+      "courseName": "中国马克思主义与当代B"
+    },
+    {
+      "id": "120001",
+      "courseId": "777",
+      "status": "submitted",
+      "course_id": "777",
+      "courseName": "当代中国经济（英）"
+    },
+    {
+      "id": "1",
+      "courseId": "973",
+      "status": "submitted",
+      "course_id": "973",
+      "courseName": "大模型驱动的智能体系统开发"
+    },
+    {
+      "id": "90001",
+      "courseId": "981",
+      "status": "submitted",
+      "course_id": "981",
+      "courseName": "自然语言处理"
+    },
+    {
+      "id": "180001",
+      "courseId": "1165",
+      "status": "draft",
+      "course_id": "1165",
+      "courseName": "视听传播研究"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tcourseId\tstatus\tcourse_id\tcourseName\n30002\t476\tsubmitted\t476\t中国马克思主义与当代B\n120001\t777\tsubmitted\t777\t当代中国经济（英）\n1\t973\tsubmitted\t973\t大模型驱动的智能体系统开发\n90001\t981\tsubmitted\t981\t自然语言处理\n180001\t1165\tdraft\t1165\t视听传播研究\n",
+  "stderr": "",
+  "execution_time_ms": 62
+}

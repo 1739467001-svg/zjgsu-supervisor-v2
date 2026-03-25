@@ -1,0 +1,8 @@
+{
+  "query": "UPDATE course_evaluations SET highlights = text_highlight WHERE text_highlight IS NOT NULL AND highlights IS NULL;\nUPDATE course_evaluations SET suggestions = text_improvement WHERE text_improvement IS NOT NULL AND suggestions IS NULL;\nUPDATE course_evaluations SET improvement_suggestion = text_improve_suggestion WHERE text_improve_suggestion IS NOT NULL AND improvement_suggestion IS NULL;\nUPDATE course_evaluations SET development_suggestion = text_improve_direction WHERE text_improve_direction IS NOT NULL AND development_suggestion IS NULL;\nUPDATE course_evaluations SET dimension_suggestion = text_other_suggestion WHERE text_other_suggestion IS NOT NULL AND dimension_suggestion IS NULL;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3KaHfo5jCyZ9SjS.root --database E5ZvUqwRaQqRfRQJY2QbxS --execute UPDATE course_evaluations SET highlights = text_highlight WHERE text_highlight IS NOT NULL AND highlights IS NULL;\nUPDATE course_evaluations SET suggestions = text_improvement WHERE text_improvement IS NOT NULL AND suggestions IS NULL;\nUPDATE course_evaluations SET improvement_suggestion = text_improve_suggestion WHERE text_improve_suggestion IS NOT NULL AND improvement_suggestion IS NULL;\nUPDATE course_evaluations SET development_suggestion = text_improve_direction WHERE text_improve_direction IS NOT NULL AND development_suggestion IS NULL;\nUPDATE course_evaluations SET dimension_suggestion = text_other_suggestion WHERE text_other_suggestion IS NOT NULL AND dimension_suggestion IS NULL;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1054 (42S22) at line 1: Unknown column 'text_highlight' in 'where clause'"
+  ]
+}

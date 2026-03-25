@@ -1,0 +1,9 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='course_evaluations' AND TABLE_SCHEMA=DATABASE() AND COLUMN_NAME LIKE 'text_%';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3KaHfo5jCyZ9SjS.root --database E5ZvUqwRaQqRfRQJY2QbxS --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='course_evaluations' AND TABLE_SCHEMA=DATABASE() AND COLUMN_NAME LIKE 'text_%';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 1511
+}

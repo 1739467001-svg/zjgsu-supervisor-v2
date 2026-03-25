@@ -1,0 +1,121 @@
+{
+  "query": "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='course_evaluations' AND TABLE_SCHEMA=DATABASE() ORDER BY ORDINAL_POSITION;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3KaHfo5jCyZ9SjS.root --database E5ZvUqwRaQqRfRQJY2QbxS --execute SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='course_evaluations' AND TABLE_SCHEMA=DATABASE() ORDER BY ORDINAL_POSITION;",
+  "rows": [
+    {
+      "COLUMN_NAME": "id"
+    },
+    {
+      "COLUMN_NAME": "planId"
+    },
+    {
+      "COLUMN_NAME": "supervisorId"
+    },
+    {
+      "COLUMN_NAME": "courseId"
+    },
+    {
+      "COLUMN_NAME": "listenDate"
+    },
+    {
+      "COLUMN_NAME": "actualWeek"
+    },
+    {
+      "COLUMN_NAME": "overallScore"
+    },
+    {
+      "COLUMN_NAME": "score_teaching_content"
+    },
+    {
+      "COLUMN_NAME": "score_course_objective"
+    },
+    {
+      "COLUMN_NAME": "score_reference_sharing"
+    },
+    {
+      "COLUMN_NAME": "score_literature_humanities"
+    },
+    {
+      "COLUMN_NAME": "score_teaching_organization"
+    },
+    {
+      "COLUMN_NAME": "score_course_development"
+    },
+    {
+      "COLUMN_NAME": "score_course_focus"
+    },
+    {
+      "COLUMN_NAME": "score_language_logic"
+    },
+    {
+      "COLUMN_NAME": "score_interaction"
+    },
+    {
+      "COLUMN_NAME": "score_learning_preparation"
+    },
+    {
+      "COLUMN_NAME": "score_teaching_quality"
+    },
+    {
+      "COLUMN_NAME": "score_active_response"
+    },
+    {
+      "COLUMN_NAME": "score_student_centered"
+    },
+    {
+      "COLUMN_NAME": "score_research_teaching"
+    },
+    {
+      "COLUMN_NAME": "score_learning_effect"
+    },
+    {
+      "COLUMN_NAME": "score_emotional_motivation"
+    },
+    {
+      "COLUMN_NAME": "score_teaching_diversity"
+    },
+    {
+      "COLUMN_NAME": "score_rhythm_transition"
+    },
+    {
+      "COLUMN_NAME": "score_key_summary"
+    },
+    {
+      "COLUMN_NAME": "score_feedback_improvement"
+    },
+    {
+      "COLUMN_NAME": "status"
+    },
+    {
+      "COLUMN_NAME": "createdAt"
+    },
+    {
+      "COLUMN_NAME": "updatedAt"
+    },
+    {
+      "COLUMN_NAME": "score_learning_task_design"
+    },
+    {
+      "COLUMN_NAME": "highlights"
+    },
+    {
+      "COLUMN_NAME": "suggestions"
+    },
+    {
+      "COLUMN_NAME": "improvement_suggestion"
+    },
+    {
+      "COLUMN_NAME": "development_suggestion"
+    },
+    {
+      "COLUMN_NAME": "dimension_suggestion"
+    },
+    {
+      "COLUMN_NAME": "resource_suggestion"
+    }
+  ],
+  "messages": [],
+  "stdout": "COLUMN_NAME\nid\nplanId\nsupervisorId\ncourseId\nlistenDate\nactualWeek\noverallScore\nscore_teaching_content\nscore_course_objective\nscore_reference_sharing\nscore_literature_humanities\nscore_teaching_organization\nscore_course_development\nscore_course_focus\nscore_language_logic\nscore_interaction\nscore_learning_preparation\nscore_teaching_quality\nscore_active_response\nscore_student_centered\nscore_research_teaching\nscore_learning_effect\nscore_emotional_motivation\nscore_teaching_diversity\nscore_rhythm_transition\nscore_key_summary\nscore_feedback_improvement\nstatus\ncreatedAt\nupdatedAt\nscore_learning_task_design\nhighlights\nsuggestions\nimprovement_suggestion\ndevelopment_suggestion\ndimension_suggestion\nresource_suggestion\n",
+  "stderr": "",
+  "execution_time_ms": 1536
+}

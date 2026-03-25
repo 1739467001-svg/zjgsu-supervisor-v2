@@ -1,0 +1,647 @@
+import { and, desc, eq, inArray, like, or, sql, ne } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
+import type { Pool } from "mysql2/promise";
+import {
+  CourseEvaluation,
+  InsertCourse,
+  InsertCourseEvaluation,
+  InsertListeningPlan,
+  InsertNotification,
+  InsertUser,
+  courses,
+  courseEvaluations,
+  listeningPlans,
+  notifications,
+  users,
+} from "../drizzle/schema";
+import { ENV } from "./_core/env";
+
+let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: any = null;
+
+export async function getDb() {
+  if (!_db && process.env.DATABASE_URL) {
+    try {
+      if (!_pool) {
+        _pool = mysql.createPool({
+          uri: process.env.DATABASE_URL,
+          waitForConnections: true,
+          connectionLimit: 10,
+          queueLimit: 0,
+          enableKeepAlive: true,
+        });
+      }
+      _db = drizzle(_pool);
+    } catch (error) {
+      console.warn("[Database] Failed to connect:", error);
+      _db = null;
+      _pool = null;
+    }
+  }
+  return _db;
+}
+
+export async function closeDb() {
+  if (_pool) {
+    try {
+      await _pool.end();
+      _pool = null;
+      _db = null;
+      console.log("[Database] Connection pool closed");
+    } catch (error) {
+      console.warn("[Database] Error closing pool:", error);
+    }
+  }
+}
+
+// ============================================================
+// 用户相关
+// ============================================================
+export async function upsertUser(user: InsertUser): Promise<void> {
+  if (!user.openId) throw new Error("User openId is required for upsert");
+  const db = await getDb();
+  if (!db) return;
+
+  const values: InsertUser = { openId: user.openId };
+  const updateSet: Record<string, unknown> = {};
+
+  const textFields = ["name", "email", "loginMethod"] as const;
+  textFields.forEach((field) => {
+    const value = user[field];
+    if (value === undefined) return;
+    const normalized = value ?? null;
+    values[field] = normalized;
+    updateSet[field] = normalized;
+  });
+
+  if (user.lastSignedIn !== undefined) {
+    values.lastSignedIn = user.lastSignedIn;
+    updateSet.lastSignedIn = user.lastSignedIn;
+  }
+  if (user.role !== undefined) {
+    values.role = user.role;
+    updateSet.role = user.role;
+  } else if (user.openId === ENV.ownerOpenId) {
+    values.role = "admin";
+    updateSet.role = "admin";
+  }
+
+  if (!values.lastSignedIn) values.lastSignedIn = new Date();
+  if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+
+  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+}
+
+export async function getUserByOpenId(openId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getUserByEmployeeId(employeeId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(users).where(eq(users.employeeId, employeeId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllUsers() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).orderBy(users.role, users.name);
+}
+
+export async function getUsersByRole(role: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(users).where(eq(users.role, role as any));
+}
+
+export async function updateUserRole(userId: number, role: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(users).set({ role: role as any }).where(eq(users.id, userId));
+}
+
+/**
+ * 直接更新用户密码，不经过upsertUser，确保密码可靠写入数据库
+ */
+export async function updateUserPassword(userId: number, newPassword: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(users).set({ password: newPassword, updatedAt: new Date() }).where(eq(users.id, userId));
+}
+
+// ============================================================
+// 课程相关
+// ============================================================
+export async function getCourses(filters: {
+  college?: string;
+  campus?: string;
+  weekday?: string;
+  week?: number;
+  teacher?: string;
+  courseName?: string;
+  page?: number;
+  pageSize?: number;
+}) {
+  const db = await getDb();
+  if (!db) return { data: [], total: 0 };
+
+  const conditions = [];
+  // 严格过滤：只有非空字符串才作为筛选条件
+  if (filters.college && filters.college.trim()) conditions.push(eq(courses.college, filters.college.trim()));
+  if (filters.campus && filters.campus.trim()) conditions.push(eq(courses.campus, filters.campus.trim()));
+  if (filters.weekday && filters.weekday.trim()) conditions.push(eq(courses.weekday, filters.weekday.trim()));
+  if (filters.teacher && filters.teacher.trim()) conditions.push(like(courses.teacher, `%${filters.teacher.trim()}%`));
+  if (filters.courseName && filters.courseName.trim()) conditions.push(like(courses.courseName, `%${filters.courseName.trim()}%`));
+  if (filters.week && filters.week > 0) {
+    // 使用JSON_CONTAINS查询包含特定周次的课程（weekNumbers是JSON数组如[1,2,3,4,5]）
+    conditions.push(sql`JSON_CONTAINS(${courses.weekNumbers}, CAST(${filters.week} AS JSON))`);
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  const page = filters.page || 1;
+  const pageSize = filters.pageSize || 20;
+  const offset = (page - 1) * pageSize;
+
+  const [data, countResult] = await Promise.all([
+    db.select().from(courses).where(where).limit(pageSize).offset(offset).orderBy(courses.college, courses.courseName),
+    db.select({ count: sql<number>`count(*)` }).from(courses).where(where),
+  ]);
+
+  return { data, total: Number(countResult[0]?.count || 0) };
+}
+
+export async function getCourseById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(courses).where(eq(courses.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getCoursesByCollege(college: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(courses).where(eq(courses.college, college)).orderBy(courses.courseName);
+}
+
+export async function getDistinctColleges() {
+  const db = await getDb();
+  if (!db) return [];
+  const result = await db
+    .selectDistinct({ college: courses.college })
+    .from(courses)
+    .where(sql`${courses.college} != ''`)
+    .orderBy(courses.college);
+  return result.map((r) => r.college).filter(Boolean);
+}
+
+export async function getDistinctTeachers(college?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const where = college ? eq(courses.college, college) : undefined;
+  const result = await db
+    .selectDistinct({ teacher: courses.teacher })
+    .from(courses)
+    .where(where)
+    .orderBy(courses.teacher);
+  return result.map((r) => r.teacher).filter(Boolean);
+}
+
+// ============================================================
+// 听课计划相关
+// ============================================================
+export async function createListeningPlan(plan: InsertListeningPlan) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  await db.insert(listeningPlans).values(plan);
+  const result = await db
+    .select()
+    .from(listeningPlans)
+    .where(and(eq(listeningPlans.supervisorId, plan.supervisorId!), eq(listeningPlans.courseId, plan.courseId!)))
+    .orderBy(desc(listeningPlans.createdAt))
+    .limit(1);
+  return result[0];
+}
+
+export async function getListeningPlansBySupervisor(supervisorId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const plans = await db
+    .select()
+    .from(listeningPlans)
+    .where(eq(listeningPlans.supervisorId, supervisorId))
+    .orderBy(desc(listeningPlans.createdAt));
+
+  // 关联课程信息
+  const courseIds = Array.from(new Set(plans.map((p) => p.courseId)));
+  if (courseIds.length === 0) return [];
+  const courseList = await db.select().from(courses).where(inArray(courses.id, courseIds));
+  const courseMap = new Map(courseList.map((c) => [c.id, c]));
+
+  return plans.map((p) => ({ ...p, course: courseMap.get(p.courseId) }));
+}
+
+export async function updateListeningPlanStatus(planId: number, status: "pending" | "completed" | "cancelled") {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(listeningPlans).set({ status }).where(eq(listeningPlans.id, planId));
+}
+
+export async function deleteListeningPlan(planId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(listeningPlans).where(eq(listeningPlans.id, planId));
+}
+
+// ============================================================
+// 课程评价相关
+// ============================================================
+// 检查课程是否已被其他老师评价过（已提交的评价）
+export async function isCourseAlreadyEvaluated(courseId: number, supervisorId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db
+    .select()
+    .from(courseEvaluations)
+    .where(
+      and(
+        eq(courseEvaluations.courseId, courseId),
+        eq(courseEvaluations.status, "submitted"),
+        ne(courseEvaluations.supervisorId, supervisorId)
+      )
+    )
+    .limit(1);
+  return result.length > 0;
+}
+
+export async function createEvaluation(evaluation: InsertCourseEvaluation) {
+  const db = await getDb();
+  if (!db) throw new Error("DB not available");
+  
+  // 检查该课程是否已被其他老师评价过
+  const alreadyEvaluated = await isCourseAlreadyEvaluated(evaluation.courseId!, evaluation.supervisorId!);
+  if (alreadyEvaluated) {
+    throw new Error("该课程已被其他老师评价过，无法再次评价");
+  }
+  
+  await db.insert(courseEvaluations).values(evaluation);
+  const result = await db
+    .select()
+    .from(courseEvaluations)
+    .where(eq(courseEvaluations.supervisorId, evaluation.supervisorId!))
+    .orderBy(desc(courseEvaluations.createdAt))
+    .limit(1);
+  return result[0];
+}
+
+export async function updateEvaluation(id: number, data: Partial<InsertCourseEvaluation>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(courseEvaluations).set(data).where(eq(courseEvaluations.id, id));
+}
+
+export async function deleteEvaluation(id: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.delete(courseEvaluations).where(eq(courseEvaluations.id, id));
+}
+
+export async function getEvaluationById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(courseEvaluations).where(eq(courseEvaluations.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getEvaluationsBySupervisor(supervisorId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const evals = await db
+    .select()
+    .from(courseEvaluations)
+    .where(eq(courseEvaluations.supervisorId, supervisorId))
+    .orderBy(desc(courseEvaluations.createdAt));
+
+  return enrichEvaluations(evals);
+}
+
+export async function getAllEvaluations(filters?: { college?: string; supervisorId?: number }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions = [];
+  if (filters?.supervisorId) conditions.push(eq(courseEvaluations.supervisorId, filters.supervisorId));
+
+  const evals = await db
+    .select()
+    .from(courseEvaluations)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(courseEvaluations.createdAt));
+
+  const enriched = await enrichEvaluations(evals);
+
+  // 按学院过滤（支持秘书的多学院字段，用顿号/逗号分隔）
+  if (filters?.college) {
+    const filterColleges = filters.college
+      .split(/[、,，]/)
+      .map((c) => c.trim().replace(/（.*?）/g, "").replace(/\(.*?\)/g, ""))
+      .filter(Boolean);
+    return enriched.filter((e) => {
+      const courseCollege = (e.course?.college || "").replace(/（.*?）/g, "").replace(/\(.*?\)/g, "").trim();
+      return filterColleges.some((fc) => courseCollege.includes(fc) || fc.includes(courseCollege));
+    });
+  }
+  return enriched;
+}
+
+async function enrichEvaluations(evals: CourseEvaluation[]) {
+  if (evals.length === 0) return [];
+  const db = await getDb();
+  if (!db) return evals.map((e) => ({ ...e, course: null, supervisor: null }));
+
+  const courseIds = Array.from(new Set(evals.map((e) => e.courseId)));
+  const supervisorIds = Array.from(new Set(evals.map((e) => e.supervisorId)));
+
+  const [courseList, supervisorList] = await Promise.all([
+    db.select().from(courses).where(inArray(courses.id, courseIds)),
+    db.select().from(users).where(inArray(users.id, supervisorIds)),
+  ]);
+
+  const courseMap = new Map(courseList.map((c) => [c.id, c]));
+  const supervisorMap = new Map(supervisorList.map((u) => [u.id, u]));
+
+  return evals.map((e) => ({
+    ...e,
+    course: courseMap.get(e.courseId) || null,
+    supervisor: supervisorMap.get(e.supervisorId) || null,
+  }));
+}
+
+// ============================================================
+// 统计相关（研究生院主管仪表盘）
+// ============================================================
+export async function getAdminStats() {
+  const db = await getDb();
+  if (!db) return null;
+
+  const [
+    totalCourses,
+    totalEvaluations,
+    totalSupervisors,
+    evalByCollege,
+    evalByWeekday,
+    recentEvals,
+    topSupervisors,
+    avgScoreByCollege,
+  ] = await Promise.all([
+    // 总课程数
+    db.select({ count: sql<number>`count(*)` }).from(courses),
+    // 总评价数
+    db.select({ count: sql<number>`count(*)` }).from(courseEvaluations).where(eq(courseEvaluations.status, "submitted")),
+    // 督导专家数
+    db.select({ count: sql<number>`count(*)` }).from(users).where(inArray(users.role, ["supervisor_expert", "supervisor_leader"] as any[])),
+    // 各学院评价次数
+    db
+      .select({
+        college: courses.college,
+        count: sql<number>`count(*)`,
+      })
+      .from(courseEvaluations)
+      .innerJoin(courses, eq(courseEvaluations.courseId, courses.id))
+      .where(eq(courseEvaluations.status, "submitted"))
+      .groupBy(courses.college)
+      .orderBy(desc(sql`count(*)`)),
+    // 按星期分布
+    db
+      .select({
+        weekday: courses.weekday,
+        count: sql<number>`count(*)`,
+      })
+      .from(courseEvaluations)
+      .innerJoin(courses, eq(courseEvaluations.courseId, courses.id))
+      .where(eq(courseEvaluations.status, "submitted"))
+      .groupBy(courses.weekday),
+    // 最近评价
+    db
+      .select()
+      .from(courseEvaluations)
+      .where(eq(courseEvaluations.status, "submitted"))
+      .orderBy(desc(courseEvaluations.createdAt))
+      .limit(10),
+    // 最活跃督导专家
+    db
+      .select({
+        supervisorId: courseEvaluations.supervisorId,
+        count: sql<number>`count(*)`,
+      })
+      .from(courseEvaluations)
+      .where(eq(courseEvaluations.status, "submitted"))
+      .groupBy(courseEvaluations.supervisorId)
+      .orderBy(desc(sql`count(*)`))
+      .limit(10),
+    // 各学院平均评分
+    db
+      .select({
+        college: courses.college,
+        avgScore: sql<number>`AVG(${courseEvaluations.overallScore})`,
+        count: sql<number>`count(*)`,
+      })
+      .from(courseEvaluations)
+      .innerJoin(courses, eq(courseEvaluations.courseId, courses.id))
+      .where(and(eq(courseEvaluations.status, "submitted"), sql`${courseEvaluations.overallScore} IS NOT NULL`))
+      .groupBy(courses.college)
+      .orderBy(courses.college),
+  ]);
+
+  // 获取最近评价的详细信息
+  const recentEnriched = await enrichEvaluations(recentEvals);
+
+  // 获取活跃督导专家详细信息
+  const supervisorIds = topSupervisors.map((s) => s.supervisorId);
+  const supervisorDetails = supervisorIds.length > 0
+    ? await db.select().from(users).where(inArray(users.id, supervisorIds))
+    : [];
+  const supervisorMap = new Map(supervisorDetails.map((u) => [u.id, u]));
+
+  return {
+    totalCourses: Number(totalCourses[0]?.count || 0),
+    totalEvaluations: Number(totalEvaluations[0]?.count || 0),
+    totalSupervisors: Number(totalSupervisors[0]?.count || 0),
+    evalByCollege: evalByCollege.map((r) => ({ college: r.college, count: Number(r.count) })),
+    evalByWeekday: evalByWeekday.map((r) => ({ weekday: r.weekday, count: Number(r.count) })),
+    recentEvals: recentEnriched,
+    topSupervisors: topSupervisors.map((s) => ({
+      supervisor: supervisorMap.get(s.supervisorId),
+      count: Number(s.count),
+    })),
+    avgScoreByCollege: avgScoreByCollege.map((r) => ({
+      college: r.college,
+      avgScore: Number(r.avgScore || 0).toFixed(2),
+      count: Number(r.count),
+    })),
+  };
+}
+
+// ============================================================
+// 通知相关
+// ============================================================
+export async function createNotification(notification: InsertNotification) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(notifications).values(notification);
+}
+
+export async function getNotificationsByUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.recipientId, userId))
+    .orderBy(desc(notifications.createdAt))
+    .limit(50);
+}
+
+export async function markNotificationRead(notificationId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, notificationId));
+}
+
+export async function markAllNotificationsRead(userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(notifications).set({ isRead: true }).where(eq(notifications.recipientId, userId));
+}
+
+export async function getUnreadNotificationCount(userId: number) {
+  const db = await getDb();
+  if (!db) return 0;
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(notifications)
+    .where(and(eq(notifications.recipientId, userId), eq(notifications.isRead, false)));
+  return Number(result[0]?.count || 0);
+}
+
+// ============================================================
+// 课程评价进度统计
+// ============================================================
+
+/**
+ * 获取指定学院（或全部学院）的课程评价进度
+ * 返回：每门课程的基本信息 + 是否已被评价 + 评价列表
+ */
+export async function getCourseEvaluationProgress(college?: string) {
+  const db = await getDb();
+  if (!db) return [];
+
+  // 构建课程查询条件
+  const conditions = [];
+  if (college) {
+    // 支持多学院字符串（顿号/逗号分隔）
+    const colleges = college
+      .split(/[、,，]/)
+      .map((c) => c.trim())
+      .filter(Boolean);
+    if (colleges.length === 1) {
+      conditions.push(like(courses.college, `%${colleges[0]}%`));
+    } else {
+      conditions.push(or(...colleges.map((c) => like(courses.college, `%${c}%`)))!);
+    }
+  }
+
+  const allCourses = await db
+    .select()
+    .from(courses)
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(courses.college, courses.courseName);
+
+  if (allCourses.length === 0) return [];
+
+  // 获取已评价的课程ID集合（submitted状态）
+  const courseIds = allCourses.map((c) => c.id);
+  const evaluatedRecords = await db
+    .select({
+      courseId: courseEvaluations.courseId,
+      id: courseEvaluations.id,
+      supervisorId: courseEvaluations.supervisorId,
+      overallScore: courseEvaluations.overallScore,
+      status: courseEvaluations.status,
+      createdAt: courseEvaluations.createdAt,
+    })
+    .from(courseEvaluations)
+    .where(and(inArray(courseEvaluations.courseId, courseIds), eq(courseEvaluations.status, "submitted")));
+
+  // 获取督导专家信息
+  const supervisorIds = Array.from(new Set(evaluatedRecords.map((e) => e.supervisorId)));
+  const supervisorList = supervisorIds.length > 0
+    ? await db.select({ id: users.id, name: users.name, employeeId: users.employeeId }).from(users).where(inArray(users.id, supervisorIds))
+    : [];
+  const supervisorMap = new Map(supervisorList.map((u) => [u.id, u]));
+
+  // 按课程ID分组评价记录
+  const evalByCourse = new Map<number, typeof evaluatedRecords>();
+  for (const ev of evaluatedRecords) {
+    if (!evalByCourse.has(ev.courseId)) evalByCourse.set(ev.courseId, []);
+    evalByCourse.get(ev.courseId)!.push(ev);
+  }
+
+  return allCourses.map((course) => {
+    const evals = evalByCourse.get(course.id) || [];
+    return {
+      ...course,
+      isEvaluated: evals.length > 0,
+      evaluationCount: evals.length,
+      evaluations: evals.map((e) => ({
+        ...e,
+        supervisor: supervisorMap.get(e.supervisorId) || null,
+      })),
+    };
+  });
+}
+
+/**
+ * 获取全校各学院的课程评价进度汇总（研究生院主管用）
+ */
+export async function getAllCollegeEvaluationProgress() {
+  const db = await getDb();
+  if (!db) return [];
+
+  // 按学院统计课程总数
+  const courseTotals = await db
+    .select({
+      college: courses.college,
+      total: sql<number>`count(*)`,
+    })
+    .from(courses)
+    .groupBy(courses.college)
+    .orderBy(courses.college);
+
+  // 按学院统计已评价课程数（distinct courseId）
+  const evaluatedCounts = await db
+    .select({
+      college: courses.college,
+      evaluatedCourses: sql<number>`count(DISTINCT ${courseEvaluations.courseId})`,
+      totalEvaluations: sql<number>`count(*)`,
+    })
+    .from(courseEvaluations)
+    .innerJoin(courses, eq(courseEvaluations.courseId, courses.id))
+    .where(eq(courseEvaluations.status, "submitted"))
+    .groupBy(courses.college);
+
+  const evalMap = new Map(evaluatedCounts.map((e) => [e.college, e]));
+
+  return courseTotals.map((ct) => {
+    const evalData = evalMap.get(ct.college);
+    return {
+      college: ct.college || "未知学院",
+      totalCourses: Number(ct.total),
+      evaluatedCourses: Number(evalData?.evaluatedCourses || 0),
+      totalEvaluations: Number(evalData?.totalEvaluations || 0),
+    };
+  });
+}

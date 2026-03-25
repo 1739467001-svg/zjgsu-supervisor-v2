@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1772653101403,
+      "tag": "0000_silly_ultimo",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1772653574227,
+      "tag": "0001_little_grim_reaper",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1772655451657,
+      "tag": "0002_dusty_sway",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1774213389075,
+      "tag": "0003_small_wolverine",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1774341497752,
+      "tag": "0004_jittery_spiral",
+      "breakpoints": true
+    }
+  ]
+}

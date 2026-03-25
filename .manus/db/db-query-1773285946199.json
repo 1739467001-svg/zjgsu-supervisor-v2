@@ -1,0 +1,9 @@
+{
+  "query": "SELECT id, courseName FROM courses WHERE courseName LIKE '%位置%' LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 3KaHfo5jCyZ9SjS.root --database E5ZvUqwRaQqRfRQJY2QbxS --execute SELECT id, courseName FROM courses WHERE courseName LIKE '%位置%' LIMIT 5;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 153
+}

@@ -1,0 +1,1 @@
+ALTER TABLE `course_evaluations` ADD `score_learning_task_design` int;
