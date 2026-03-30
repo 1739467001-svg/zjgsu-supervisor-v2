@@ -65,17 +65,11 @@ export function getCurrentWeek(): number | undefined {
  */
 export function isValidFutureDate(date: string | Date): boolean {
   const checkDate = typeof date === "string" ? new Date(date) : date;
-  const now = new Date();
   
   checkDate.setHours(0, 0, 0, 0);
-  now.setHours(0, 0, 0, 0);
-  
-  // 日期不能早于今天
-  if (checkDate.getTime() < now.getTime()) {
-    return false;
-  }
   
   // 日期必须在学期范围内（学期第一天到最后一天）
+  // 允许选择过去的日期，督导老师可以补填之前的听课记录
   const startDate = new Date(SEMESTER_START_DATE);
   startDate.setHours(0, 0, 0, 0);
   
@@ -91,8 +85,9 @@ export function isValidFutureDate(date: string | Date): boolean {
  * @returns 最小日期的 YYYY-MM-DD 格式字符串
  */
 export function getMinSelectableDate(): string {
-  const today = new Date();
-  return today.toISOString().split("T")[0];
+  // 最小可选日期为学期第一天，允许督导老师补填之前的听课记录
+  const startDate = new Date(SEMESTER_START_DATE);
+  return startDate.toISOString().split("T")[0];
 }
 
 /**
