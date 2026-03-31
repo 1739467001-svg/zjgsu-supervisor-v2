@@ -73,7 +73,7 @@ const evaluationSchema = z.object({
   listenDate: z.string().optional(),
   actualWeek: z.number().optional(),
   overallScore: z.number().min(1).max(5).optional(),
-  // 定量评分
+  // 定量评分（字段名与数据库 schema 保持一致）
   score_teaching_content: z.number().min(1).max(5).optional(),
   score_course_objective: z.number().min(1).max(5).optional(),
   score_reference_sharing: z.number().min(1).max(5).optional(),
@@ -89,18 +89,19 @@ const evaluationSchema = z.object({
   score_student_centered: z.number().min(1).max(5).optional(),
   score_research_teaching: z.number().min(1).max(5).optional(),
   score_learning_effect: z.number().min(1).max(5).optional(),
-  score_emotional_motivation: z.number().min(1).max(5).optional(),
-  score_teaching_diversity: z.number().min(1).max(5).optional(),
-  score_rhythm_transition: z.number().min(1).max(5).optional(),
-  score_key_summary: z.number().min(1).max(5).optional(),
-  score_feedback_improvement: z.number().min(1).max(5).optional(),
-  // 定性评价
-  text_highlight: z.string().optional(),
-  text_improvement: z.string().optional(),
-  text_good_experience: z.string().optional(),
-  text_improve_suggestion: z.string().optional(),
-  text_improve_direction: z.string().optional(),
-  text_other_suggestion: z.string().optional(),
+  score_learning_task_design: z.number().min(1).max(5).optional(),
+  score_interaction_quality: z.number().min(1).max(5).optional(),
+  score_method_diversity: z.number().min(1).max(5).optional(),
+  score_equal_dialogue: z.number().min(1).max(5).optional(),
+  score_pace_control: z.number().min(1).max(5).optional(),
+  score_feedback: z.number().min(1).max(5).optional(),
+  // 定性评价（字段名与数据库 schema 保持一致）
+  highlights: z.string().optional(),
+  suggestions: z.string().optional(),
+  improvement_suggestion: z.string().optional(),
+  development_suggestion: z.string().optional(),
+  dimension_suggestion: z.string().optional(),
+  resource_suggestion: z.string().optional(),
   status: z.enum(["draft", "submitted"]).optional(),
 });
 
