@@ -66,15 +66,15 @@ function ScoreItem({ label, description, value, onChange, max = 5, required = fa
 
 const WEEKS = Array.from({ length: 19 }, (_, i) => i + 1);
 
-// 定量评分维度的标题和指标
+// 定量评分维度的标题和指标（与督导评价表格完全对应）
 const EVALUATION_DIMENSIONS = {
   teacherBehavior: {
     title: "一、教师风范",
     items: [
-      { key: "score_teaching_content", label: "1. 教学行为合规性", description: "按课表准时上下课、不擅自调课、不久坐讲台、不长时间用视频（不超过8分钟），无不当言论" },
+      { key: "score_teaching_content", label: "1. 教学行为合规性", description: "按课表准时上下课、不擅自调课、不久坐讲台、不长时间用视频代讲，无不当言论" },
       { key: "score_course_objective", label: "2. 课堂秩序管理", description: "有效提醒并营造学生前排就坐、合理使用电子设备的氛围" },
-      { key: "score_reference_sharing", label: "3. 教学准备充分度", description: "教学材料齐全、设备调试到位，呈现专业严谨性" },
-      { key: "score_literature_humanities", label: "4. 思政融合", description: "教学包含思政元素、思政案例和思政评价" },
+      { key: "score_reference_sharing", label: "3. 教学准备充分度", description: "教学材料、设备调试到位，呈现专业严谨性" },
+      { key: "score_literature_humanities", label: "4. 前沿视野传递", description: "清晰关联教学内容与学科前沿、关键科研问题，体现研究生培养深度" },
       { key: "score_teaching_organization", label: "5. 教学感染力", description: "眼神、手势、语调自然得体，能吸引学生注意力，课堂氛围有效调动" },
     ]
   },
@@ -82,7 +82,7 @@ const EVALUATION_DIMENSIONS = {
     title: "二、学生状态",
     items: [
       { key: "score_course_development", label: "1. 到课率与准时率", description: "实际到课人数占比高，迟到、缺课现象少" },
-      { key: "score_course_focus", label: "2. 课堂专注度", description: "学生抬头追随教学焦点、主动参与思考的比例高，持续性强" },
+      { key: "score_course_focus", label: "2. 课堂专注度", description: "学生抬头追随教学焦点、主动参与思考的比例与持续性强" },
       { key: "score_language_logic", label: "3. 设备使用合理性", description: "电子设备用于课程相关学习而非无关活动的程度" },
       { key: "score_interaction", label: "4. 互动响应率", description: "对教师提问或讨论邀请的响应积极性和广度" },
       { key: "score_learning_preparation", label: "5. 学习准备情况", description: "学生普遍携带相关资料、主动记录课堂笔记" },
@@ -96,17 +96,17 @@ const EVALUATION_DIMENSIONS = {
       { key: "score_student_centered", label: "3. 课件与案例质量", description: "PPT逻辑清晰、视觉辅助效果佳；案例典型时效强，具有启发性" },
       { key: "score_research_teaching", label: "4.1 科研转化融合度（学术学位课程）", description: "将自身科研成果或前沿课题有机转化为教学内容，助力学生科研思维培养" },
       { key: "score_learning_effect", label: "4.2 前沿视野传递（专业学位课程）", description: "清晰关联教学内容与学科前沿、行业创新、关键科研问题，体现研究生培养深度" },
-      { key: "score_learning_task_design", label: "5. 学习任务设计", description: "阅读材料、课堂任务或课后作业具有一定挑战度，能引导学生深度思考与自主探究" },
+      { key: "score_learning_task_design", label: "5. 学习任务设计（选填）", description: "阅读材料、课堂任务或课后作业具有一定挑战度，能引导学生深度思考与自主探究", optional: true },
     ]
   },
   teachingProcess: {
     title: "四、教学过程",
     items: [
-      { key: "score_interaction_quality", label: "1. 师生互动质量", description: "问题设计有启发性、互动形式多样、学生参与度高、反馈及时有效" },
-      { key: "score_method_diversity", label: "2. 教学方法多样性", description: "讲授、讨论、案例分析、小组合作等方法的合理运用" },
-      { key: "score_equal_dialogue", label: "3. 平等交流氛围", description: "师生关系民主平等、学生敢于提问和表达、课堂氛围开放包容" },
-      { key: "score_pace_control", label: "4. 节奏调控能力", description: "教学节奏适当、重难点突出、课堂时间分配合理、学生思维跟进度" },
-      { key: "score_feedback", label: "5. 即时反馈运用", description: "及时回应学生问题、纠正学生错误、调整教学策略、强化学习效果" },
+      { key: "score_interaction_quality", label: "1. 师生互动质量", description: "互动是否频繁、自然，并能激发学生思考。是否设计有效课堂互动环节（如讨论、探究、实操等），引导学生动手动脑" },
+      { key: "score_method_diversity", label: "2. 教学方法多样性", description: "是否根据内容灵活运用研讨、案例分析等多种方法。是否进行创新性教学设计，采用多样化教学方法" },
+      { key: "score_equal_dialogue", label: "3. 平等交流氛围", description: "是否主动营造安全、平等的氛围，鼓励学生提出不同观点" },
+      { key: "score_pace_control", label: "4. 节奏调控能力", description: "能否根据学生现场反馈调整讲授速度与互动节奏" },
+      { key: "score_feedback", label: "5. 即时反馈运用", description: "是否利用提问、小练习等方式即时诊断学习效果并回应" },
     ]
   }
 };
@@ -246,10 +246,17 @@ export default function EvaluationForm() {
 
   const createMutation = trpc.evaluations.create.useMutation({
     onSuccess: (data) => {
-      toast.success("评价已保存！");
       utils.evaluations.myEvaluations.invalidate();
       utils.plans.myPlans.invalidate();
-      navigate("/evaluations");
+      // 新建成功后，根据提交状态决定跳转
+      // 注意：data 中包含新建的评价 ID，草稿状态跳转到编辑页继续填写
+      if ((data as any)?.id && (data as any)?.status === 'draft') {
+        toast.success("草稿已保存！");
+        navigate(`/evaluations/${(data as any).id}/edit`);
+      } else {
+        toast.success("评价已提交！");
+        navigate("/evaluations");
+      }
     },
     onError: (err) => toast.error(err.message),
   });
@@ -331,7 +338,7 @@ export default function EvaluationForm() {
   // 处理听课日期变化 - 自动计算周次
   const handleListenDateChange = (date: string) => {
     if (!isValidFutureDate(date)) {
-      toast.error("只能选择当前时间及未来的日期");
+      toast.error("请选择本学期范围内的日期");
       return;
     }
     
@@ -371,15 +378,6 @@ export default function EvaluationForm() {
       }
       if (!trimmedSuggestions) {
         errors.push("请填写存在不足与提升建议");
-      }
-      if (!trimmedImprovement) {
-        errors.push("请填写针对性改进建议");
-      }
-      if (!trimmedDevelopment) {
-        errors.push("请填写拓展性发展建议");
-      }
-      if (!trimmedDimension) {
-        errors.push("请填写针对定量评价维度的改进建议");
       }
     }
 
@@ -738,56 +736,31 @@ export default function EvaluationForm() {
           </div>
         </div>
 
-        {/* 三、具体建议 */}
+                {/* 三、其他建议（可填） */}
         <div className="bg-white rounded-xl p-5 mb-5" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
-          <h3 className="text-sm font-bold mb-4" style={{ color: "oklch(0.18 0.025 240)" }}>三、具体建议</h3>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "oklch(0.18 0.025 240)" }}>三、其他建议（可填）</h3>
           
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-sm font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>
-                针对性改进建议 <span className="text-red-500">*</span>
+                综合改进建议 <span className="text-gray-400">(选填)</span>
               </Label>
               <Textarea
-                placeholder="针对课程的具体改进建议..."
+                placeholder="针对课程教学内容、方式及评分维度的整体改进意见..."
                 value={form.improvement_suggestion}
                 onChange={(e) => setForm((p) => ({ ...p, improvement_suggestion: e.target.value }))}
-                className="min-h-20 text-sm"
+                className="min-h-24 text-sm"
               />
             </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>
-                拓展性发展建议 <span className="text-red-500">*</span>
+                发展与支持建议 <span className="text-gray-400">(选填)</span>
               </Label>
               <Textarea
-                placeholder="课程拓展和发展方向的建议..."
+                placeholder="课程未来发展方向、所需资源或学校支持的建议..."
                 value={form.development_suggestion}
                 onChange={(e) => setForm((p) => ({ ...p, development_suggestion: e.target.value }))}
-                className="min-h-20 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>
-                针对定量评价维度的改进建议 <span className="text-red-500">*</span>
-              </Label>
-              <Textarea
-                placeholder="针对上述评分维度的具体改进建议..."
-                value={form.dimension_suggestion}
-                onChange={(e) => setForm((p) => ({ ...p, dimension_suggestion: e.target.value }))}
-                className="min-h-20 text-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>
-                资源或支持建议 <span className="text-gray-400">(选填)</span>
-              </Label>
-              <Textarea
-                placeholder="课程需要的资源或支持建议（可选）..."
-                value={form.resource_suggestion}
-                onChange={(e) => setForm((p) => ({ ...p, resource_suggestion: e.target.value }))}
-                className="min-h-20 text-sm"
+                className="min-h-24 text-sm"
               />
             </div>
           </div>
