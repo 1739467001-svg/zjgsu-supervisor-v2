@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Search, Eye, Edit, Trash2, Star, ClipboardList, Filter } from "lucide-react";
+import { formatDateOnlyBJ, formatDateBJ } from "@shared/dateUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -148,9 +149,9 @@ export default function EvaluationList() {
                       )}
 
                       <p className="text-xs mt-2" style={{ color: "oklch(0.65 0.02 240)" }}>
-                        {evaluation.listenDate ? `听课日期：${new Date(evaluation.listenDate).toLocaleDateString("zh-CN")}` : ""}
+                        {evaluation.listenDate ? `听课日期：${formatDateOnlyBJ(evaluation.listenDate)}` : ""}
                         {evaluation.actualWeek ? ` · 第${evaluation.actualWeek}周` : ""}
-                        {" · "}提交于 {new Date(evaluation.createdAt).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {" · "}提交于 {formatDateBJ(evaluation.createdAt, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
 

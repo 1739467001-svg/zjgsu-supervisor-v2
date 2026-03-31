@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import PlanCalendarView from "@/components/PlanCalendarView";
+import { formatDateBJ } from "@shared/dateUtils";
 
 const STATUS_MAP = {
   pending: {
@@ -382,7 +383,7 @@ export default function MyPlans() {
                         style={{ color: "oklch(0.65 0.02 240)" }}
                       >
                         添加时间：
-                        {new Date(plan.createdAt).toLocaleString("zh-CN")}
+                        {formatDateBJ(plan.createdAt)}
                       </p>
                     </div>
                   );

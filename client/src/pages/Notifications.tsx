@@ -3,6 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Bell, CheckCheck, Eye } from "lucide-react";
+import { formatDateBJ } from "@shared/dateUtils";
 import { useLocation } from "wouter";
 
 export default function Notifications() {
@@ -83,7 +84,7 @@ export default function Notifications() {
                     </div>
                     <p className="text-xs mt-1 leading-relaxed" style={{ color: "oklch(0.52 0.025 240)" }}>{n.content}</p>
                     <p className="text-xs mt-2" style={{ color: "oklch(0.65 0.02 240)" }}>
-                      {new Date(n.createdAt).toLocaleString("zh-CN")}
+                      {formatDateBJ(n.createdAt)}
                     </p>
                   </div>
                   {n.evaluationId && <Eye className="w-4 h-4 flex-shrink-0 mt-1" style={{ color: "oklch(0.65 0.02 240)" }} />}

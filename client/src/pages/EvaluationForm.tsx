@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useLocation, useParams } from "wouter";
 import { ChevronLeft, Save, Send, Star } from "lucide-react";
-import { calculateWeekFromDate, calculateDateRangeFromWeek, getMinSelectableDate, getMaxSelectableDate, isValidFutureDate } from "@shared/dateUtils";
+import { calculateWeekFromDate, calculateDateRangeFromWeek, getMinSelectableDate, getMaxSelectableDate, isValidFutureDate, getTodayBJ, formatTimeBJ } from "@shared/dateUtils";
 
 // 评分按钮组件
 function ScoreGroup({ value, onChange, max = 5 }: { value?: number; onChange: (v: number) => void; max?: number }) {
@@ -147,7 +147,7 @@ export default function EvaluationForm() {
 
   // 计算当天日期和对应周次的默认值
   const getTodayDefaults = () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayBJ();
     const week = calculateWeekFromDate(today);
     return { listenDate: today, actualWeek: week };
   };
@@ -199,7 +199,9 @@ export default function EvaluationForm() {
   useEffect(() => {
     if (isEdit && existingEval && !hasLoadedEval) {
       const evalData = existingEval as any;
-      const listenDateStr = evalData.listenDate ? new Date(evalData.listenDate).toISOString().split("T")[0] : todayDefaults.listenDate;
+      const listenDateStr = evalData.listenDate
+        ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(evalData.listenDate))
+        : todayDefaults.listenDate;
       setForm((prev) => ({
         ...prev,
         listenDate: listenDateStr,
@@ -469,7 +471,7 @@ export default function EvaluationForm() {
                   <span>已保存</span>
                   {lastSavedTime && (
                     <span style={{ color: "oklch(0.65 0.02 240)" }}>
-                      于 {lastSavedTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                      于 {formatTimeBJ(lastSavedTime)}
                     </span>
                   )}
                 </>

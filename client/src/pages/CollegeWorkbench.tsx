@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { Search, Eye, Star, Building2, BookOpen, CheckCircle, ChevronRight, BarChart3, Clock } from "lucide-react";
+import { formatDateBJ } from "@shared/dateUtils";
 
 export default function CollegeWorkbench() {
   const { user } = useAuth();
@@ -166,7 +167,7 @@ export default function CollegeWorkbench() {
                           </div>
                         )}
                         <p className="text-xs mt-1.5" style={{ color: "oklch(0.65 0.02 240)" }}>
-                          评价时间：{new Date(evaluation.createdAt).toLocaleString("zh-CN", { year: "numeric", month: "short", day: "numeric" })}
+                          评价时间：{formatDateBJ(evaluation.createdAt, { year: "numeric", month: "short", day: "numeric" })}
                         </p>
                       </div>
                       <Eye className="w-4 h-4 flex-shrink-0 mt-1" style={{ color: "oklch(0.65 0.02 240)" }} />
