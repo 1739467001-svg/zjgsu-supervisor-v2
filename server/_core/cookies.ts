@@ -24,25 +24,15 @@ function isSecureRequest(req: Request) {
 export function getSessionCookieOptions(
   req: Request
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
-  // const hostname = req.hostname;
-  // const shouldSetDomain =
-  //   hostname &&
-  //   !LOCAL_HOSTS.has(hostname) &&
-  //   !isIpAddress(hostname) &&
-  //   hostname !== "127.0.0.1" &&
-  //   hostname !== "::1";
-
-  // const domain =
-  //   shouldSetDomain && !hostname.startsWith(".")
-  //     ? `.${hostname}`
-  //     : shouldSetDomain
-  //       ? hostname
-  //       : undefined;
+  const isSecure = isSecureRequest(req);
 
   return {
     httpOnly: true,
     path: "/",
-    sameSite: "none",
-    secure: isSecureRequest(req),
+    // SameSite=None 要求必须同时 Secure=true，否则现代浏览器会拒绝写入 cookie。
+    // 在 HTTP（非 HTTPS）环境（如通过 IP 地址访问）下，使用 SameSite=Lax + Secure=false，
+    // 确保登录后 session cookie 能被浏览器正常保存和发送。
+    sameSite: isSecure ? "none" : "lax",
+    secure: isSecure,
   };
 }
