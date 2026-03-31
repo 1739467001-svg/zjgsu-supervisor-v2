@@ -22,6 +22,7 @@ import {
   getEvaluationById,
   getEvaluationsBySupervisor,
   getListeningPlansBySupervisor,
+  getUsedWeeksForCourse,
   getNotificationsByUser,
   getUnreadNotificationCount,
   getUserByEmployeeId,
@@ -244,6 +245,11 @@ export const appRouter = router({
       await deleteListeningPlan(input);
       return { success: true };
     }),
+    getUsedWeeks: supervisorProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        return getUsedWeeksForCourse(ctx.user!.id, input.courseId);
+      }),
   }),
 
   // ============================================================

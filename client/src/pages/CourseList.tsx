@@ -35,6 +35,14 @@ export default function CourseList() {
   const [planDialog, setPlanDialog] = useState<{ open: boolean; courseId?: number; courseName?: string }>({ open: false });
   const [planWeek, setPlanWeek] = useState<number | undefined>();
 
+  // 查询当前课程已占用周次
+  const { data: usedWeeksData } = trpc.plans.getUsedWeeks.useQuery(
+    { courseId: planDialog.courseId! },
+    { enabled: planDialog.open && !!planDialog.courseId }
+  );
+  const usedWeeks = usedWeeksData?.usedWeeks ?? [];
+  const evaluatedWeeks = usedWeeksData?.evaluatedWeeks ?? [];
+
   // 构建传给后端的查询参数（过滤掉空字符串）
   const queryParams = useMemo(() => {
     const params: Record<string, any> = {
@@ -482,9 +490,26 @@ export default function CourseList() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">不指定周次</SelectItem>
-                  {WEEKS.map((w) => (
-                    <SelectItem key={w} value={w.toString()}>第 {w} 周</SelectItem>
-                  ))}
+                  {WEEKS.map((w) => {
+                    const isEvaluated = evaluatedWeeks.includes(w);
+                    const isUsed = usedWeeks.includes(w);
+                    const disabled = isEvaluated || isUsed;
+                    const label = isEvaluated
+                      ? `第 ${w} 周（已评价）`
+                      : isUsed
+                      ? `第 ${w} 周（已计划）`
+                      : `第 ${w} 周`;
+                    return (
+                      <SelectItem
+                        key={w}
+                        value={w.toString()}
+                        disabled={disabled}
+                        className={disabled ? "opacity-40 cursor-not-allowed" : ""}
+                      >
+                        {label}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>
