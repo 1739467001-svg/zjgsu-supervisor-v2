@@ -149,9 +149,10 @@ export default function EvaluationDetail() {
           <button onClick={() => navigate('/evaluations')} className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity" style={{ color: "oklch(0.35 0.13 245)" }}>
             <ChevronLeft className="w-4 h-4" />返回
           </button>
-          {canEdit && !isEditMode && (
-            <Button size="sm" variant="outline" onClick={() => navigate(`/evaluations/${evalId}?edit=true`)}>
-              <Edit className="w-4 h-4 mr-1.5" />继续评价
+          {canEdit && (
+            <Button size="sm" variant="outline" onClick={() => navigate(`/evaluations/${evalId}/edit`)}>
+              <Edit className="w-4 h-4 mr-1.5" />
+              {evaluation?.status === "submitted" ? "修改评价" : "继续评价"}
             </Button>
           )}
         </div>
