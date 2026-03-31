@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, like, or, sql, ne } from "drizzle-orm";
+import { and, desc, eq, inArray, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import mysql from "mysql2/promise";
 import type { Pool } from "mysql2/promise";
@@ -242,7 +242,22 @@ export async function getListeningPlansBySupervisor(supervisorId: number) {
   const courseList = await db.select().from(courses).where(inArray(courses.id, courseIds));
   const courseMap = new Map(courseList.map((c) => [c.id, c]));
 
-  return plans.map((p) => ({ ...p, course: courseMap.get(p.courseId) }));
+  // 关联评价 ID：查询该督导专家对这些课程的评价记录
+  const planIds = plans.map((p) => p.id);
+  const evaluationList = await db
+    .select({ id: courseEvaluations.id, courseId: courseEvaluations.courseId, supervisorId: courseEvaluations.supervisorId })
+    .from(courseEvaluations)
+    .where(eq(courseEvaluations.supervisorId, supervisorId));
+  // 按 courseId 建立映射（同一课程可能有多条评价，取最新的一条）
+  const evaluationMap = new Map<number, number>();
+  for (const ev of evaluationList) {
+    // 由于查询结果已按 createdAt desc 排序，第一次遇到的就是最新的
+    if (!evaluationMap.has(ev.courseId)) {
+      evaluationMap.set(ev.courseId, ev.id);
+    }
+  }
+
+  return plans.map((p) => ({ ...p, course: courseMap.get(p.courseId), evaluationId: evaluationMap.get(p.courseId) ?? null }));
 }
 
 export async function updateListeningPlanStatus(planId: number, status: "pending" | "completed" | "cancelled") {
@@ -259,34 +274,9 @@ export async function deleteListeningPlan(planId: number) {
 
 // ============================================================
 // 课程评价相关
-// ============================================================
-// 检查课程是否已被其他老师评价过（已提交的评价）
-export async function isCourseAlreadyEvaluated(courseId: number, supervisorId: number) {
-  const db = await getDb();
-  if (!db) return false;
-  const result = await db
-    .select()
-    .from(courseEvaluations)
-    .where(
-      and(
-        eq(courseEvaluations.courseId, courseId),
-        eq(courseEvaluations.status, "submitted"),
-        ne(courseEvaluations.supervisorId, supervisorId)
-      )
-    )
-    .limit(1);
-  return result.length > 0;
-}
-
 export async function createEvaluation(evaluation: InsertCourseEvaluation) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
-  
-  // 检查该课程是否已被其他老师评价过
-  const alreadyEvaluated = await isCourseAlreadyEvaluated(evaluation.courseId!, evaluation.supervisorId!);
-  if (alreadyEvaluated) {
-    throw new Error("该课程已被其他老师评价过，无法再次评价");
-  }
   
   await db.insert(courseEvaluations).values(evaluation);
   const result = await db
