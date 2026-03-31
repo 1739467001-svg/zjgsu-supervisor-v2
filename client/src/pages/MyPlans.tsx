@@ -358,7 +358,7 @@ export default function MyPlans() {
                               size="sm"
                               variant="outline"
                               className="h-8 px-2 sm:px-3 text-xs gap-1"
-                              onClick={() => navigate("/evaluations")}
+                              onClick={() => plan.evaluationId ? navigate(`/evaluations/${plan.evaluationId}`) : navigate("/evaluations")}
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
                               <span className="hidden sm:inline">查看评价</span>
