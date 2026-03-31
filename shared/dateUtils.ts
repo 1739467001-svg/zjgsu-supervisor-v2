@@ -152,29 +152,14 @@ export function getMaxSelectableDate(): string {
 }
 
 /**
- * 全局统一时间格式：年月日 + 时:分（北京时间）
- * 例：2026年3月30日 00:30
- */
-export const DEFAULT_DATETIME_OPTIONS: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-};
-
-/**
  * 格式化日期为北京时间的本地化字符串
- * 无参调用时使用全局统一格式（年月日 时:分）
  * @param date Date 对象或日期字符串
- * @param options Intl.DateTimeFormatOptions 选项（可选，不传则使用全局默认格式）
- * @returns 格式化后的字符串，例："2026年3月30日 00:30"
+ * @param options Intl.DateTimeFormatOptions 选项
+ * @returns 格式化后的字符串
  */
 export function formatDateBJ(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  const opts = options ?? DEFAULT_DATETIME_OPTIONS;
-  return d.toLocaleString("zh-CN", { timeZone: TIMEZONE, ...opts });
+  return d.toLocaleString("zh-CN", { timeZone: TIMEZONE, ...options });
 }
 
 /**
