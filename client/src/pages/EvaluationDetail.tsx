@@ -88,18 +88,10 @@ export default function EvaluationDetail() {
   const { data: evaluation, isLoading, error } = trpc.evaluations.getById.useQuery(evalId, { enabled: evalId > 0 });
   const canEdit = ["supervisor_expert", "supervisor_leader", "admin"].includes(user?.role || "") && evaluation?.supervisorId === user?.id;
 
-  // Handle invalid ID
+  // Handle invalid ID - 直接跳转，不显示中转页
   if (evalId <= 0) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-center">
-          <p style={{ color: "oklch(0.52 0.025 240)" }}>无效的评价ID</p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/evaluations')} className="mt-4">
-            返回评价记录
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
+    navigate('/evaluations', { replace: true });
+    return null;
   }
 
   if (isLoading) {
@@ -113,17 +105,10 @@ export default function EvaluationDetail() {
   }
 
   // Handle query error or evaluation not found
+  // 评价不存在或已删除 - 直接跳转，不显示中转页
   if (error || !evaluation) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-center">
-          <p style={{ color: "oklch(0.52 0.025 240)" }}>评价记录不存在或已被删除</p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/evaluations')} className="mt-4">
-            返回评价记录
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
+    navigate('/evaluations', { replace: true });
+    return null;
   }
 
   const course = (evaluation as any).course;

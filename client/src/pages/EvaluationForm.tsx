@@ -433,18 +433,8 @@ export default function EvaluationForm() {
   const targetCourse = course || (existingEval as any)?.course;
 
   if (!isEdit && !isValidCourseId) {
-    return (
-      <DashboardLayout>
-        <div className="p-4 sm:p-6 max-w-3xl mx-auto page-transition">
-          <button onClick={() => navigate(-1 as any)} className="flex items-center gap-1.5 text-sm mb-5 hover:opacity-70 transition-opacity" style={{ color: "oklch(0.35 0.13 245)" }}>
-            <ChevronLeft className="w-4 h-4" />返回
-          </button>
-          <div className="bg-white rounded-xl p-8 text-center" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
-            <p className="text-sm" style={{ color: "oklch(0.52 0.025 240)" }}>课程不存在或 ID 无效</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+    navigate('/evaluations', { replace: true });
+    return null;
   }
 
   return (
