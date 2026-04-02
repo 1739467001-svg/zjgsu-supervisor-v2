@@ -38,82 +38,66 @@ export default function Login() {
     <div
       className="min-h-screen flex"
       style={{
-        background:
-          "linear-gradient(135deg, oklch(0.20 0.045 245) 0%, oklch(0.30 0.08 240) 50%, oklch(0.22 0.05 250) 100%)",
+        background: "oklch(0.15 0.03 245)",
       }}
     >
-      {/* 左侧装饰区 */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center items-center p-12 relative overflow-hidden">
-        {/* 背景装饰圆 */}
+      {/* 左侧学校背景图区 */}
+      <div
+        className="hidden lg:flex lg:w-1/2 flex-col justify-end items-center relative overflow-hidden"
+        style={{
+          backgroundImage: "url('/school_bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center 40%",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* 渐变蒙版：下半部分加深色遮罩保证文字可读，上半保留图片内容 */}
         <div
-          className="absolute top-20 left-20 w-72 h-72 rounded-full opacity-10"
-          style={{ background: "oklch(0.62 0.14 200)" }}
-        />
-        <div
-          className="absolute bottom-32 right-16 w-56 h-56 rounded-full opacity-8"
-          style={{ background: "oklch(0.72 0.14 85)" }}
-        />
-        <div
-          className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full opacity-6"
-          style={{ background: "oklch(0.52 0.16 200)" }}
+          className="absolute inset-0"
+          style={{
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 40%, rgba(10,20,50,0.82) 75%, rgba(10,20,50,0.95) 100%)",
+          }}
         />
 
-        <div className="relative z-10 text-center">
-          {/* 校徽区域 */}
-          <div className="flex justify-center mb-8">
-            <div
-              className="w-28 h-28 rounded-full flex items-center justify-center"
-              style={{
-                background: "oklch(0.28 0.055 245)",
-                border: "2px solid oklch(0.62 0.14 200 / 0.4)",
-                boxShadow: "0 0 40px oklch(0.35 0.13 245 / 0.3)",
-              }}
-            >
-              <GraduationCap className="w-14 h-14" style={{ color: "oklch(0.72 0.14 85)" }} />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold mb-3" style={{ color: "oklch(0.95 0.008 240)" }}>
+        <div className="relative z-10 text-center w-full px-10 pb-14">
+          {/* 标题区域 */}
+          <h1
+            className="text-4xl font-bold mb-2"
+            style={{ color: "#ffffff", textShadow: "0 2px 12px rgba(0,0,0,0.6)" }}
+          >
             浙江工商大学
           </h1>
-          <h2 className="text-2xl font-light mb-2" style={{ color: "oklch(0.80 0.015 240)" }}>
+          <h2
+            className="text-xl font-light mb-4"
+            style={{ color: "rgba(255,255,255,0.88)", textShadow: "0 1px 8px rgba(0,0,0,0.5)" }}
+          >
             研究生院督导管理系统
           </h2>
           <p
-            className="text-base mt-6 max-w-xs mx-auto leading-relaxed"
-            style={{ color: "oklch(0.65 0.02 240)" }}
+            className="text-sm max-w-xs mx-auto leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.70)", textShadow: "0 1px 6px rgba(0,0,0,0.5)" }}
           >
             专业、高效的研究生课程督导评价平台，助力教学质量持续提升
           </p>
 
-          {/* 功能标签 */}
-          <div className="flex flex-wrap justify-center gap-2 mt-8">
-            {["课程督导", "评价管理", "数据统计", "多角色协作"].map((tag) => (
-              <span
-                key={tag}
-                className="px-3 py-1.5 rounded-full text-xs font-medium"
-                style={{
-                  background: "oklch(0.28 0.055 245)",
-                  color: "oklch(0.75 0.06 200)",
-                  border: "1px solid oklch(0.35 0.07 245)",
-                }}
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-
           {/* 数据统计 */}
-          <div className="grid grid-cols-3 gap-4 mt-10">
+          <div className="grid grid-cols-3 gap-4 mt-8">
             {[
               { value: "1344", label: "课程总数" },
               { value: "22", label: "覆盖学院" },
               { value: "595", label: "授课教师" },
             ].map(({ value, label }) => (
               <div key={label} className="text-center">
-                <div className="text-2xl font-bold" style={{ color: "oklch(0.72 0.14 85)" }}>
+                <div
+                  className="text-2xl font-bold"
+                  style={{ color: "#ffd700", textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
+                >
                   {value}
                 </div>
-                <div className="text-xs mt-1" style={{ color: "oklch(0.60 0.02 240)" }}>
+                <div
+                  className="text-xs mt-1"
+                  style={{ color: "rgba(255,255,255,0.75)", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}
+                >
                   {label}
                 </div>
               </div>
@@ -123,8 +107,22 @@ export default function Login() {
       </div>
 
       {/* 右侧登录表单 */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
-        <div className="w-full max-w-md">
+      <div
+        className="flex-1 flex items-center justify-center p-6 lg:p-12 relative"
+        style={{
+          /* 手机端也显示背景图 */
+          backgroundImage: "url('/school_bg.jpg')",
+          backgroundSize: "cover",
+          backgroundPosition: "center 40%",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* 手机端蒙版 */}
+        <div
+          className="absolute inset-0 lg:hidden"
+          style={{ background: "rgba(10,20,50,0.72)" }}
+        />
+        <div className="w-full max-w-md relative z-10">
           {/* 移动端标题 */}
           <div className="lg:hidden text-center mb-8">
             <div className="flex justify-center mb-4">
