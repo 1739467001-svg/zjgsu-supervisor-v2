@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useLocation, useParams } from "wouter";
 import { ChevronLeft, Save, Send, Star } from "lucide-react";
-import { calculateWeekFromDate, calculateDateRangeFromWeek, getMinSelectableDate, getMaxSelectableDate, isValidFutureDate } from "@shared/dateUtils";
+import { calculateWeekFromDate, calculateDateRangeFromWeek, getMinSelectableDate, getMaxSelectableDate, isValidFutureDate, getTodayBJ, formatTimeBJ } from "@shared/dateUtils";
 
 // 评分按钮组件
 function ScoreGroup({ value, onChange, max = 5 }: { value?: number; onChange: (v: number) => void; max?: number }) {
@@ -113,33 +113,20 @@ const EVALUATION_DIMENSIONS = {
 
 export default function EvaluationForm() {
   const [, navigate] = useLocation();
-  const { courseId: courseIdStr, evalId: evalIdStr } = useParams();
+  const { courseId: courseIdStr } = useParams();
   
-  // 检查是否是编辑模式（/evaluations/:id/edit）
-  const isPathEditMode = window.location.pathname.includes('/edit');
+  // 编辑模式：路径包含 /edit 即为编辑模式（同步判断，避免异步问题）
+  const isEditMode = window.location.pathname.includes('/edit');
   
   // 从 URL 路径中提取评价 ID（用于 /evaluations/:id/edit 路由）
-  const extractEvalIdFromPath = () => {
+  const pathEvalId = (() => {
     const match = window.location.pathname.match(/\/evaluations\/(\d+)/);
     return match ? parseInt(match[1]) : null;
-  };
+  })();
   
-  const pathEvalId = extractEvalIdFromPath();
-  
-  // 支持两种编辑模式：
-  // 1. /evaluations/:id/edit - 从路径中提取 ID
-  // 2. /evaluations/123?edit=true - 从查询参数中获取
-  const [isQueryEditMode, setIsQueryEditMode] = useState(false);
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    setIsQueryEditMode(urlParams.get('edit') === 'true');
-  }, []);
-  
-  const isEditMode = isPathEditMode || isQueryEditMode;
-  
-  // 根据不同的路由格式提取参数
+  // 根据路由格式提取参数
   const courseId = !isEditMode && courseIdStr ? parseInt(courseIdStr) : null;
-  const evalId = isEditMode && pathEvalId ? pathEvalId : (evalIdStr ? parseInt(evalIdStr) : null);
+  const evalId = isEditMode ? pathEvalId : null;
   
   const actualEvalId = evalId || 0;
   const isEdit = !!actualEvalId && actualEvalId > 0;
@@ -147,7 +134,7 @@ export default function EvaluationForm() {
 
   // 计算当天日期和对应周次的默认值
   const getTodayDefaults = () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = getTodayBJ();
     const week = calculateWeekFromDate(today);
     return { listenDate: today, actualWeek: week };
   };
@@ -199,7 +186,9 @@ export default function EvaluationForm() {
   useEffect(() => {
     if (isEdit && existingEval && !hasLoadedEval) {
       const evalData = existingEval as any;
-      const listenDateStr = evalData.listenDate ? new Date(evalData.listenDate).toISOString().split("T")[0] : todayDefaults.listenDate;
+      const listenDateStr = evalData.listenDate
+        ? new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(evalData.listenDate))
+        : todayDefaults.listenDate;
       setForm((prev) => ({
         ...prev,
         listenDate: listenDateStr,
@@ -431,18 +420,8 @@ export default function EvaluationForm() {
   const targetCourse = course || (existingEval as any)?.course;
 
   if (!isEdit && !isValidCourseId) {
-    return (
-      <DashboardLayout>
-        <div className="p-4 sm:p-6 max-w-3xl mx-auto page-transition">
-          <button onClick={() => navigate(-1 as any)} className="flex items-center gap-1.5 text-sm mb-5 hover:opacity-70 transition-opacity" style={{ color: "oklch(0.35 0.13 245)" }}>
-            <ChevronLeft className="w-4 h-4" />返回
-          </button>
-          <div className="bg-white rounded-xl p-8 text-center" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
-            <p className="text-sm" style={{ color: "oklch(0.52 0.025 240)" }}>课程不存在或 ID 无效</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
+    navigate('/evaluations', { replace: true });
+    return null;
   }
 
   return (
@@ -469,7 +448,7 @@ export default function EvaluationForm() {
                   <span>已保存</span>
                   {lastSavedTime && (
                     <span style={{ color: "oklch(0.65 0.02 240)" }}>
-                      于 {lastSavedTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                      于 {formatTimeBJ(lastSavedTime)}
                     </span>
                   )}
                 </>

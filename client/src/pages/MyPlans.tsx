@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import PlanCalendarView from "@/components/PlanCalendarView";
+import { formatDateBJ } from "@shared/dateUtils";
 
 const STATUS_MAP = {
   pending: {
@@ -358,7 +359,7 @@ export default function MyPlans() {
                               size="sm"
                               variant="outline"
                               className="h-8 px-2 sm:px-3 text-xs gap-1"
-                              onClick={() => navigate("/evaluations")}
+                              onClick={() => plan.evaluationId ? navigate(`/evaluations/${plan.evaluationId}`) : navigate("/evaluations")}
                             >
                               <CheckCircle className="w-3.5 h-3.5" />
                               <span className="hidden sm:inline">查看评价</span>
@@ -382,7 +383,7 @@ export default function MyPlans() {
                         style={{ color: "oklch(0.65 0.02 240)" }}
                       >
                         添加时间：
-                        {new Date(plan.createdAt).toLocaleString("zh-CN")}
+                        {formatDateBJ(plan.createdAt)}
                       </p>
                     </div>
                   );

@@ -1,5 +1,6 @@
 import XLSX from "xlsx";
 import { CourseEvaluation } from "../drizzle/schema";
+import { formatDateOnlyBJ, formatDateBJ } from "../shared/dateUtils";
 
 interface EvaluationExportData extends CourseEvaluation {
   course?: {
@@ -28,7 +29,7 @@ export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Bu
     "校区": (evaluation as any).course?.campus || "—",
     "课程性质": (evaluation as any).course?.courseType || "—",
     "督导专家": (evaluation as any).supervisor?.name || "—",
-    "听课日期": evaluation.listenDate ? new Date(evaluation.listenDate).toLocaleDateString("zh-CN") : "—",
+    "听课日期": evaluation.listenDate ? formatDateOnlyBJ(evaluation.listenDate) : "—",
     "实际周次": evaluation.actualWeek ? `第${evaluation.actualWeek}周` : "—",
     "综合评分": evaluation.overallScore || "—",
     "教学内容": evaluation.score_teaching_content || "—",
@@ -52,7 +53,7 @@ export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Bu
     "节奏调控": (evaluation as any).score_pace_control || "—",
     "即时反馈": (evaluation as any).score_feedback || "—",
     "评价状态": evaluation.status === "submitted" ? "已提交" : "草稿",
-    "提交时间": evaluation.updatedAt ? new Date(evaluation.updatedAt).toLocaleString("zh-CN") : "—",
+    "提交时间": evaluation.updatedAt ? formatDateBJ(evaluation.updatedAt) : "—",
   }));
 
   // 创建工作簿

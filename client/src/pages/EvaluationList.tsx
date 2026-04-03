@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { Search, Eye, Edit, Trash2, Star, ClipboardList, Filter } from "lucide-react";
+import { formatDateOnlyBJ, formatDateBJ } from "@shared/dateUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -148,9 +149,9 @@ export default function EvaluationList() {
                       )}
 
                       <p className="text-xs mt-2" style={{ color: "oklch(0.65 0.02 240)" }}>
-                        {evaluation.listenDate ? `听课日期：${new Date(evaluation.listenDate).toLocaleDateString("zh-CN")}` : ""}
+                        {evaluation.listenDate ? `听课日期：${formatDateOnlyBJ(evaluation.listenDate)}` : ""}
                         {evaluation.actualWeek ? ` · 第${evaluation.actualWeek}周` : ""}
-                        {" · "}提交于 {new Date(evaluation.createdAt).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {" · "}提交于 {formatDateBJ(evaluation.createdAt, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
 
@@ -160,7 +161,7 @@ export default function EvaluationList() {
                         <span className="hidden sm:inline">查看</span>
                       </Button>
                       {canEdit && isOwn && (
-                        <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 gap-1 text-xs" title={evaluation.status === 'draft' ? '继续完成评价' : '修改已提交的评价'} onClick={() => navigate(`/evaluations/${evaluation.id}?edit=true`)}>
+                        <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 gap-1 text-xs" title={evaluation.status === 'draft' ? '继续完成评价' : '修改已提交的评价'} onClick={() => navigate(`/evaluations/${evaluation.id}/edit`)}>
                           <Edit className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">{evaluation.status === 'draft' ? '继续评价' : '修改'}</span>
                         </Button>

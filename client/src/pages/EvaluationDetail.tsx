@@ -3,8 +3,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useLocation, useParams } from "wouter";
 import { ChevronLeft, Edit, Star, MapPin, Clock, User, Building2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import EvaluationForm from "./EvaluationForm";
+import { formatDateOnlyBJ } from "@shared/dateUtils";
 import DashboardLayout from "@/components/DashboardLayout";
 
 const SCORE_SECTIONS = [
@@ -72,33 +71,15 @@ function ScoreDisplay({ value, max = 5 }: { value?: number | null; max?: number 
 export default function EvaluationDetail() {
   const params = useParams();
   const [, navigate] = useLocation();
-  const search = typeof window !== 'undefined' ? window.location.search : '';
   const { user } = useAuth();
   const evalId = parseInt(params.id || "0");
-  const [isEditMode, setIsEditMode] = useState(false);
-
-  // 检查 URL 查询参数中的 edit 标志
-  useEffect(() => {
-    const urlParams = new URLSearchParams(search);
-    const editValue = urlParams.get('edit');
-    setIsEditMode(editValue === 'true');
-  }, [search]);
-
   const { data: evaluation, isLoading, error } = trpc.evaluations.getById.useQuery(evalId, { enabled: evalId > 0 });
   const canEdit = ["supervisor_expert", "supervisor_leader", "admin"].includes(user?.role || "") && evaluation?.supervisorId === user?.id;
 
-  // Handle invalid ID
+  // Handle invalid ID - 直接跳转，不显示中转页
   if (evalId <= 0) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-center">
-          <p style={{ color: "oklch(0.52 0.025 240)" }}>无效的评价ID</p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/evaluations')} className="mt-4">
-            返回评价记录
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
+    navigate('/evaluations', { replace: true });
+    return null;
   }
 
   if (isLoading) {
@@ -112,17 +93,10 @@ export default function EvaluationDetail() {
   }
 
   // Handle query error or evaluation not found
+  // 评价不存在或已删除 - 直接跳转，不显示中转页
   if (error || !evaluation) {
-    return (
-      <DashboardLayout>
-        <div className="p-6 text-center">
-          <p style={{ color: "oklch(0.52 0.025 240)" }}>评价记录不存在或已被删除</p>
-          <Button variant="outline" size="sm" onClick={() => navigate('/evaluations')} className="mt-4">
-            返回评价记录
-          </Button>
-        </div>
-      </DashboardLayout>
-    );
+    navigate('/evaluations', { replace: true });
+    return null;
   }
 
   const course = (evaluation as any).course;
@@ -135,12 +109,6 @@ export default function EvaluationDetail() {
     return { title: section.title, avg };
   });
 
-  // 如果是编辑模式，显示表单
-  if (isEditMode && canEdit) {
-    return (
-      <EvaluationForm />
-    );
-  }
 
   return (
     <DashboardLayout>
@@ -149,9 +117,10 @@ export default function EvaluationDetail() {
           <button onClick={() => navigate('/evaluations')} className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity" style={{ color: "oklch(0.35 0.13 245)" }}>
             <ChevronLeft className="w-4 h-4" />返回
           </button>
-          {canEdit && !isEditMode && (
-            <Button size="sm" variant="outline" onClick={() => navigate(`/evaluations/${evalId}?edit=true`)}>
-              <Edit className="w-4 h-4 mr-1.5" />继续评价
+          {canEdit && (
+            <Button size="sm" variant="outline" onClick={() => navigate(`/evaluations/${evalId}/edit`)}>
+              <Edit className="w-4 h-4 mr-1.5" />
+              {evaluation?.status === "submitted" ? "修改评价" : "继续评价"}
             </Button>
           )}
         </div>
@@ -184,7 +153,7 @@ export default function EvaluationDetail() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 pt-4 text-xs" style={{ borderTop: "1px solid oklch(0.93 0.006 240)" }}>
             <div><span style={{ color: "oklch(0.52 0.025 240)" }}>督导专家：</span><span className="font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>{supervisor?.name || "-"}</span></div>
-            <div><span style={{ color: "oklch(0.52 0.025 240)" }}>听课日期：</span><span className="font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>{evaluation.listenDate ? new Date(evaluation.listenDate).toLocaleDateString("zh-CN") : "-"}</span></div>
+            <div><span style={{ color: "oklch(0.52 0.025 240)" }}>听课日期：</span><span className="font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>{evaluation.listenDate ? formatDateOnlyBJ(evaluation.listenDate) : "-"}</span></div>
             <div><span style={{ color: "oklch(0.52 0.025 240)" }}>实际周次：</span><span className="font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>{evaluation.actualWeek ? `第${evaluation.actualWeek}周` : "-"}</span></div>
             <div><span style={{ color: "oklch(0.52 0.025 240)" }}>评价状态：</span>
               <span className="font-medium px-1.5 py-0.5 rounded-full text-xs" style={{

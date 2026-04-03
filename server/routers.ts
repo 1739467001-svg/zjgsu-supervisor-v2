@@ -22,6 +22,7 @@ import {
   getEvaluationById,
   getEvaluationsBySupervisor,
   getListeningPlansBySupervisor,
+  getUsedWeeksForCourse,
   getNotificationsByUser,
   getUnreadNotificationCount,
   getUserByEmployeeId,
@@ -244,6 +245,11 @@ export const appRouter = router({
       await deleteListeningPlan(input);
       return { success: true };
     }),
+    getUsedWeeks: supervisorProcedure
+      .input(z.object({ courseId: z.number() }))
+      .query(async ({ input, ctx }) => {
+        return getUsedWeeksForCourse(ctx.user!.id, input.courseId);
+      }),
   }),
 
   // ============================================================
@@ -396,7 +402,8 @@ export const appRouter = router({
         );
 
         const buffer = generateEvaluationExcel(enrichedEvaluations);
-        return { buffer: buffer.toString("base64"), filename: `evaluations_${new Date().toISOString().split("T")[0]}.xlsx` };
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+        return { buffer: buffer.toString("base64"), filename: `evaluations_${todayStr}.xlsx` };
       }),
   }),
 

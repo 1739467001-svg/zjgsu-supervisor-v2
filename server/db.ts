@@ -217,6 +217,25 @@ export async function getDistinctTeachers(college?: string) {
 export async function createListeningPlan(plan: InsertListeningPlan) {
   const db = await getDb();
   if (!db) throw new Error("DB not available");
+
+  // 唯一性校验：同一督导+同一课程+同一周次只能有一条记录
+  if (plan.planWeek != null) {
+    const existing = await db
+      .select({ id: listeningPlans.id })
+      .from(listeningPlans)
+      .where(
+        and(
+          eq(listeningPlans.supervisorId, plan.supervisorId!),
+          eq(listeningPlans.courseId, plan.courseId!),
+          eq(listeningPlans.planWeek, plan.planWeek)
+        )
+      )
+      .limit(1);
+    if (existing.length > 0) {
+      throw new Error(`第 ${plan.planWeek} 周已加入过该课程的听课计划，不可重复添加`);
+    }
+  }
+
   await db.insert(listeningPlans).values(plan);
   const result = await db
     .select()
@@ -225,6 +244,39 @@ export async function createListeningPlan(plan: InsertListeningPlan) {
     .orderBy(desc(listeningPlans.createdAt))
     .limit(1);
   return result[0];
+}
+
+/**
+ * 查询某督导对某课程已占用的周次（已有听课计划 或 已提交评价的周次）
+ * 返回 { usedWeeks: number[], evaluatedWeeks: number[] }
+ */
+export async function getUsedWeeksForCourse(supervisorId: number, courseId: number) {
+  const db = await getDb();
+  if (!db) return { usedWeeks: [], evaluatedWeeks: [] };
+
+  // 已有听课计划的周次（pending / completed / cancelled 均算占用）
+  const planRows = await db
+    .select({ planWeek: listeningPlans.planWeek, status: listeningPlans.status })
+    .from(listeningPlans)
+    .where(
+      and(
+        eq(listeningPlans.supervisorId, supervisorId),
+        eq(listeningPlans.courseId, courseId)
+      )
+    );
+
+  const usedWeeks: number[] = [];
+  const evaluatedWeeks: number[] = [];
+  for (const row of planRows) {
+    if (row.planWeek != null) {
+      usedWeeks.push(row.planWeek);
+      if (row.status === "completed") {
+        evaluatedWeeks.push(row.planWeek);
+      }
+    }
+  }
+
+  return { usedWeeks, evaluatedWeeks };
 }
 
 export async function getListeningPlansBySupervisor(supervisorId: number) {

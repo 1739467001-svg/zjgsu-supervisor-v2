@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { Search, CheckCircle2, Clock, ChevronLeft, Star, BookOpen, Eye } from "lucide-react";
+import { formatDateOnlyBJ } from "@shared/dateUtils";
 
 type ProgressTab = "all" | "evaluated" | "unevaluated";
 
@@ -227,7 +228,7 @@ export default function CourseProgress() {
                               )}
                             </div>
                             <span className="text-xs" style={{ color: "oklch(0.65 0.02 240)" }}>
-                              {new Date(ev.createdAt).toLocaleDateString("zh-CN")}
+                              {formatDateOnlyBJ(ev.createdAt)}
                             </span>
                           </div>
                         ))}

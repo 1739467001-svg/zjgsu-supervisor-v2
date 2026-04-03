@@ -162,15 +162,15 @@ export const courseEvaluations = mysqlTable("course_evaluations", {
 
   // 四）教学过程
   // 17. 师生互动质量（1-5）
-  score_emotional_motivation: int("score_emotional_motivation"),
+  score_interaction_quality: int("score_interaction_quality"),
   // 18. 教学方法多样性（1-5）
-  score_teaching_diversity: int("score_teaching_diversity"),
+  score_method_diversity: int("score_method_diversity"),
   // 19. 平等交流氛围（1-5）
-  score_rhythm_transition: int("score_rhythm_transition"),
+  score_equal_dialogue: int("score_equal_dialogue"),
   // 20. 节奏调控能力（1-5）
-  score_key_summary: int("score_key_summary"),
+  score_pace_control: int("score_pace_control"),
   // 21. 即时反馈运用（1-5）
-  score_feedback_improvement: int("score_feedback_improvement"),
+  score_feedback: int("score_feedback"),
 
   // ============ 二、课程亮点与评价 ============
   // 1. 最突出的教学亮点
