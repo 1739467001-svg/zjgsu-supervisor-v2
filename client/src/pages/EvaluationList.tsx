@@ -6,10 +6,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
-import { Search, Eye, Edit, Trash2, Star, ClipboardList, Filter } from "lucide-react";
+import { Search, Eye, Edit, Trash2, Star, ClipboardList, Filter, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { formatDateOnlyBJ, formatDateBJ } from "@shared/dateUtils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   draft: { label: "草稿", color: "oklch(0.52 0.025 240)", bg: "oklch(0.93 0.01 240)" },
@@ -22,10 +28,12 @@ export default function EvaluationList() {
   const role = user?.role || "user";
   const canEdit = ["supervisor_expert", "supervisor_leader", "admin"].includes(role);
   const canViewAll = ["supervisor_leader", "graduate_admin", "admin"].includes(role);
+  const canExport = ["graduate_admin", "admin", "college_secretary"].includes(role);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [collegeFilter, setCollegeFilter] = useState("all");
+  const [exporting, setExporting] = useState(false);
 
   const { data: evaluations, isLoading } = trpc.evaluations.allEvaluations.useQuery({});
   const { data: colleges } = trpc.courses.getColleges.useQuery();
@@ -39,6 +47,80 @@ export default function EvaluationList() {
     },
     onError: (err) => toast.error(err.message),
   });
+
+  const exportExcelMutation = trpc.evaluations.exportToExcel.useMutation({
+    onSuccess: (data) => {
+      // 将 base64 转为 Blob 下载
+      const byteCharacters = atob(data.buffer);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("Excel 报表导出成功");
+      setExporting(false);
+    },
+    onError: (err) => {
+      toast.error(`导出失败：${err.message}`);
+      setExporting(false);
+    },
+  });
+
+  const exportPdfMutation = trpc.evaluations.exportToPdf.useMutation({
+    onSuccess: (data) => {
+      // 用新窗口打开 HTML 并触发打印（另存为 PDF）
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+        // 等待内容渲染后自动触发打印
+        setTimeout(() => {
+          printWindow.print();
+        }, 800);
+      } else {
+        // 如果弹窗被拦截，降级为下载 HTML 文件
+        const blob = new Blob([data.html], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = data.filename.replace(".pdf", ".html");
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.info("请在浏览器中打开下载的 HTML 文件，使用 Ctrl+P 打印为 PDF");
+      }
+      toast.success("PDF 报表已生成，请在打印对话框中选择\"另存为 PDF\"");
+      setExporting(false);
+    },
+    onError: (err) => {
+      toast.error(`导出失败：${err.message}`);
+      setExporting(false);
+    },
+  });
+
+  const handleExportExcel = () => {
+    setExporting(true);
+    const params: { college?: string } = {};
+    if (collegeFilter !== "all") params.college = collegeFilter;
+    exportExcelMutation.mutate(params);
+  };
+
+  const handleExportPdf = () => {
+    setExporting(true);
+    const params: { college?: string } = {};
+    if (collegeFilter !== "all") params.college = collegeFilter;
+    exportPdfMutation.mutate(params);
+  };
 
   const filtered = evaluations?.filter((e) => {
     const course = (e as any).course;
@@ -64,6 +146,40 @@ export default function EvaluationList() {
               共 {filtered.length} 条评价记录
             </p>
           </div>
+
+          {/* 导出报表按钮 */}
+          {canExport && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={exporting}
+                  style={{ borderColor: "oklch(0.35 0.13 245)", color: "oklch(0.35 0.13 245)" }}
+                >
+                  <Download className="w-4 h-4" />
+                  {exporting ? "导出中..." : "导出报表"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={handleExportExcel} className="gap-2 cursor-pointer">
+                  <FileSpreadsheet className="w-4 h-4" style={{ color: "oklch(0.50 0.18 145)" }} />
+                  <div>
+                    <div className="text-sm font-medium">导出 Excel</div>
+                    <div className="text-xs" style={{ color: "oklch(0.55 0.02 240)" }}>按专业分类的数据表格</div>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPdf} className="gap-2 cursor-pointer">
+                  <FileText className="w-4 h-4" style={{ color: "oklch(0.55 0.20 25)" }} />
+                  <div>
+                    <div className="text-sm font-medium">导出 PDF</div>
+                    <div className="text-xs" style={{ color: "oklch(0.55 0.02 240)" }}>复刻评价表单格式</div>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
 
         {/* 筛选 */}

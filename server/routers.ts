@@ -36,7 +36,7 @@ import {
   upsertUser,
 } from "./db";
 import { sdk } from "./_core/sdk";
-import { generateEvaluationExcel } from "./exportUtils";
+import { generateEvaluationExcel, generateEvaluationPdfHtml } from "./exportUtils";
 
 // ============================================================
 // 角色权限中间件
@@ -404,6 +404,36 @@ export const appRouter = router({
         const buffer = generateEvaluationExcel(enrichedEvaluations);
         const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
         return { buffer: buffer.toString("base64"), filename: `evaluations_${todayStr}.xlsx` };
+      }),
+
+    exportToPdf: protectedProcedure
+      .input(z.object({ college: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user!;
+        // 权限：研究生院主管/admin 可导出全部，学院教学秘书只能导出本学院
+        if (!["graduate_admin", "admin", "college_secretary"].includes(user.role || "")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无导出权限" });
+        }
+
+        let evaluations;
+        if (user.role === "college_secretary") {
+          evaluations = await getAllEvaluations({ college: user.college || undefined });
+        } else {
+          evaluations = await getAllEvaluations({ college: input.college });
+        }
+
+        const allUsers = await getAllUsers();
+        const enrichedEvaluations = await Promise.all(
+          evaluations.map(async (evaluation) => {
+            const course = await getCourseById(evaluation.courseId);
+            const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
+            return { ...evaluation, course, supervisor };
+          })
+        );
+
+        const pdfHtml = generateEvaluationPdfHtml(enrichedEvaluations);
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+        return { html: pdfHtml, filename: `evaluations_${todayStr}.pdf` };
       }),
   }),
 
