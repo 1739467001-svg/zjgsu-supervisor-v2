@@ -161,7 +161,7 @@ export default function EvaluationList() {
                         <span className="hidden sm:inline">查看</span>
                       </Button>
                       {canEdit && isOwn && (
-                        <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 gap-1 text-xs" title={evaluation.status === 'draft' ? '继续完成评价' : '修改已提交的评价'} onClick={() => navigate(`/evaluations/${evaluation.id}?edit=true`)}>
+                        <Button size="sm" variant="outline" className="h-8 px-2 sm:px-3 gap-1 text-xs" title={evaluation.status === 'draft' ? '继续完成评价' : '修改已提交的评价'} onClick={() => navigate(`/evaluations/${evaluation.id}/edit`)}>
                           <Edit className="w-3.5 h-3.5" />
                           <span className="hidden sm:inline">{evaluation.status === 'draft' ? '继续评价' : '修改'}</span>
                         </Button>

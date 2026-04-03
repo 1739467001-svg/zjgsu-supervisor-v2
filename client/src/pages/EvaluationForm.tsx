@@ -113,33 +113,20 @@ const EVALUATION_DIMENSIONS = {
 
 export default function EvaluationForm() {
   const [, navigate] = useLocation();
-  const { courseId: courseIdStr, evalId: evalIdStr } = useParams();
+  const { courseId: courseIdStr } = useParams();
   
-  // 检查是否是编辑模式（/evaluations/:id/edit）
-  const isPathEditMode = window.location.pathname.includes('/edit');
+  // 编辑模式：路径包含 /edit 即为编辑模式（同步判断，避免异步问题）
+  const isEditMode = window.location.pathname.includes('/edit');
   
   // 从 URL 路径中提取评价 ID（用于 /evaluations/:id/edit 路由）
-  const extractEvalIdFromPath = () => {
+  const pathEvalId = (() => {
     const match = window.location.pathname.match(/\/evaluations\/(\d+)/);
     return match ? parseInt(match[1]) : null;
-  };
+  })();
   
-  const pathEvalId = extractEvalIdFromPath();
-  
-  // 支持两种编辑模式：
-  // 1. /evaluations/:id/edit - 从路径中提取 ID
-  // 2. /evaluations/123?edit=true - 从查询参数中获取
-  const [isQueryEditMode, setIsQueryEditMode] = useState(false);
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    setIsQueryEditMode(urlParams.get('edit') === 'true');
-  }, []);
-  
-  const isEditMode = isPathEditMode || isQueryEditMode;
-  
-  // 根据不同的路由格式提取参数
+  // 根据路由格式提取参数
   const courseId = !isEditMode && courseIdStr ? parseInt(courseIdStr) : null;
-  const evalId = isEditMode && pathEvalId ? pathEvalId : (evalIdStr ? parseInt(evalIdStr) : null);
+  const evalId = isEditMode ? pathEvalId : null;
   
   const actualEvalId = evalId || 0;
   const isEdit = !!actualEvalId && actualEvalId > 0;

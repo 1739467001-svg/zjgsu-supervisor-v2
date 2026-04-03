@@ -4,8 +4,6 @@ import { Button } from "@/components/ui/button";
 import { useLocation, useParams } from "wouter";
 import { ChevronLeft, Edit, Star, MapPin, Clock, User, Building2 } from "lucide-react";
 import { formatDateOnlyBJ } from "@shared/dateUtils";
-import { useState, useEffect } from "react";
-import EvaluationForm from "./EvaluationForm";
 import DashboardLayout from "@/components/DashboardLayout";
 
 const SCORE_SECTIONS = [
@@ -73,18 +71,8 @@ function ScoreDisplay({ value, max = 5 }: { value?: number | null; max?: number 
 export default function EvaluationDetail() {
   const params = useParams();
   const [, navigate] = useLocation();
-  const search = typeof window !== 'undefined' ? window.location.search : '';
   const { user } = useAuth();
   const evalId = parseInt(params.id || "0");
-  const [isEditMode, setIsEditMode] = useState(false);
-
-  // 检查 URL 查询参数中的 edit 标志
-  useEffect(() => {
-    const urlParams = new URLSearchParams(search);
-    const editValue = urlParams.get('edit');
-    setIsEditMode(editValue === 'true');
-  }, [search]);
-
   const { data: evaluation, isLoading, error } = trpc.evaluations.getById.useQuery(evalId, { enabled: evalId > 0 });
   const canEdit = ["supervisor_expert", "supervisor_leader", "admin"].includes(user?.role || "") && evaluation?.supervisorId === user?.id;
 
@@ -121,12 +109,6 @@ export default function EvaluationDetail() {
     return { title: section.title, avg };
   });
 
-  // 如果是编辑模式，显示表单
-  if (isEditMode && canEdit) {
-    return (
-      <EvaluationForm />
-    );
-  }
 
   return (
     <DashboardLayout>
