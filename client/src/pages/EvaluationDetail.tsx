@@ -6,45 +6,47 @@ import { ChevronLeft, Edit, Star, MapPin, Clock, User, Building2 } from "lucide-
 import { formatDateOnlyBJ } from "@shared/dateUtils";
 import DashboardLayout from "@/components/DashboardLayout";
 
+// 与 EvaluationForm 完全一致的评分维度定义
 const SCORE_SECTIONS = [
   {
-    title: "（一）教学内容",
+    title: "一、教师风范",
     items: [
-      { key: "score_teaching_content", label: "1. 教学内容与能力" },
-      { key: "score_course_objective", label: "2. 课程目标管理" },
-      { key: "score_reference_sharing", label: "3. 参考资料分享" },
-      { key: "score_literature_humanities", label: "4. 文献人文融入" },
-      { key: "score_teaching_organization", label: "5. 教学组织力" },
+      { key: "score_teaching_content", label: "1. 教学行为合规性", description: "按课表准时上下课、不擅自调课、不久坐讲台、不长时间用视频代讲，无不当言论" },
+      { key: "score_course_objective", label: "2. 课堂秩序管理", description: "有效提醒并营造学生前排就坐、合理使用电子设备的氛围" },
+      { key: "score_reference_sharing", label: "3. 教学准备充分度", description: "教学材料、设备调试到位，呈现专业严谨性" },
+      { key: "score_literature_humanities", label: "4. 前沿视野传递", description: "清晰关联教学内容与学科前沿、关键科研问题，体现研究生培养深度" },
+      { key: "score_teaching_organization", label: "5. 教学感染力", description: "眼神、手势、语调自然得体，能吸引学生注意力，课堂氛围有效调动" },
     ],
   },
   {
-    title: "（二）学生状态",
+    title: "二、学生状态",
     items: [
-      { key: "score_course_development", label: "6. 课程发展情况" },
-      { key: "score_course_focus", label: "7. 课程专注度" },
-      { key: "score_language_logic", label: "8. 语言逻辑能力" },
-      { key: "score_interaction", label: "9. 互动参与情况" },
-      { key: "score_learning_preparation", label: "10. 学习准备充分" },
+      { key: "score_course_development", label: "1. 到课率与准时率", description: "实际到课人数占比高，迟到、缺课现象少" },
+      { key: "score_course_focus", label: "2. 课堂专注度", description: "学生抬头追随教学焦点、主动参与思考的比例与持续性强" },
+      { key: "score_language_logic", label: "3. 设备使用合理性", description: "电子设备用于课程相关学习而非无关活动的程度" },
+      { key: "score_interaction", label: "4. 互动响应率", description: "对教师提问或讨论邀请的响应积极性和广度" },
+      { key: "score_learning_preparation", label: "5. 学习准备情况", description: "学生普遍携带相关资料、主动记录课堂笔记" },
     ],
   },
   {
-    title: "（三）课程内容",
+    title: "三、课程内容",
     items: [
-      { key: "score_teaching_quality", label: "11. 教学质量水平" },
-      { key: "score_active_response", label: "12. 积极回应情况" },
-      { key: "score_student_centered", label: "13. 以学生为中心" },
-      { key: "score_research_teaching", label: "14. 科研教学融合" },
-      { key: "score_learning_effect", label: "15. 学习效果评估" },
+      { key: "score_teaching_quality", label: "1. 教学大纲贴合度", description: "严格按教学大纲授课，无擅自删减核心内容，教学进度合理" },
+      { key: "score_active_response", label: "2. 深度与前沿性", description: "内容是否超越基础层面，融入最新研究进展与专业前沿动态" },
+      { key: "score_student_centered", label: "3. 课件与案例质量", description: "PPT逻辑清晰、视觉辅助效果佳；案例典型时效强，具有启发性" },
+      { key: "score_research_teaching", label: "4.1 科研转化融合度（学术学位课程）", description: "将自身科研成果或前沿课题有机转化为教学内容，助力学生科研思维培养", optional: true },
+      { key: "score_learning_effect", label: "4.2 前沿视野传递（专业学位课程）", description: "清晰关联教学内容与学科前沿、行业创新、关键科研问题，体现研究生培养深度", optional: true },
+      { key: "score_learning_task_design", label: "5. 学习任务设计（选填）", description: "阅读材料、课堂任务或课后作业具有一定挑战度，能引导学生深度思考与自主探究", optional: true },
     ],
   },
   {
-    title: "（四）教学过程",
+    title: "四、教学过程",
     items: [
-      { key: "score_emotional_motivation", label: "16. 情感激励动力" },
-      { key: "score_teaching_diversity", label: "17. 教学多样性" },
-      { key: "score_rhythm_transition", label: "18. 节奏过渡流畅" },
-      { key: "score_key_summary", label: "19. 重点总结归纳" },
-      { key: "score_feedback_improvement", label: "20. 反馈改进机制" },
+      { key: "score_interaction_quality", label: "1. 师生互动质量", description: "互动是否频繁、自然，并能激发学生思考。是否设计有效课堂互动环节（如讨论、探究、实操等），引导学生动手动脑" },
+      { key: "score_method_diversity", label: "2. 教学方法多样性", description: "是否根据内容灵活运用研讨、案例分析等多种方法。是否进行创新性教学设计，采用多样化教学方法" },
+      { key: "score_equal_dialogue", label: "3. 平等交流氛围", description: "是否主动营造安全、平等的氛围，鼓励学生提出不同观点" },
+      { key: "score_pace_control", label: "4. 节奏调控能力", description: "能否根据学生现场反馈调整讲授速度与互动节奏" },
+      { key: "score_feedback", label: "5. 即时反馈运用", description: "是否利用提问、小练习等方式即时诊断学习效果并回应" },
     ],
   },
 ];
@@ -55,7 +57,7 @@ function ScoreDisplay({ value, max = 5 }: { value?: number | null; max?: number 
     <div className="flex items-center gap-1.5">
       <div className="flex gap-1">
         {Array.from({ length: max }).map((_, i) => (
-          <div key={i} className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium" style={{
+          <div key={i} className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-medium" style={{
             background: i < value ? "oklch(0.35 0.13 245)" : "oklch(0.93 0.01 240)",
             color: i < value ? "white" : "oklch(0.65 0.02 240)",
           }}>
@@ -63,7 +65,7 @@ function ScoreDisplay({ value, max = 5 }: { value?: number | null; max?: number 
           </div>
         ))}
       </div>
-      <span className="text-xs font-medium" style={{ color: "oklch(0.35 0.13 245)" }}>{value}/{max}</span>
+      <span className="text-xs font-medium ml-1" style={{ color: "oklch(0.35 0.13 245)" }}>{value}/{max}分</span>
     </div>
   );
 }
@@ -76,7 +78,7 @@ export default function EvaluationDetail() {
   const { data: evaluation, isLoading, error } = trpc.evaluations.getById.useQuery(evalId, { enabled: evalId > 0 });
   const canEdit = ["supervisor_expert", "supervisor_leader", "admin"].includes(user?.role || "") && evaluation?.supervisorId === user?.id;
 
-  // Handle invalid ID - 直接跳转，不显示中转页
+  // Handle invalid ID
   if (evalId <= 0) {
     navigate('/evaluations', { replace: true });
     return null;
@@ -92,8 +94,6 @@ export default function EvaluationDetail() {
     );
   }
 
-  // Handle query error or evaluation not found
-  // 评价不存在或已删除 - 直接跳转，不显示中转页
   if (error || !evaluation) {
     navigate('/evaluations', { replace: true });
     return null;
@@ -102,13 +102,14 @@ export default function EvaluationDetail() {
   const course = (evaluation as any).course;
   const supervisor = (evaluation as any).supervisor;
 
-  // 计算各维度平均分
+  // 计算各维度平均分（跳过 optional 且无值的项）
   const sectionAverages = SCORE_SECTIONS.map((section) => {
-    const scores = section.items.map((item) => (evaluation as any)[item.key]).filter((s): s is number => s != null);
+    const scores = section.items
+      .map((item) => (evaluation as any)[item.key])
+      .filter((s): s is number => s != null && s > 0);
     const avg = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : null;
     return { title: section.title, avg };
   });
-
 
   return (
     <DashboardLayout>
@@ -137,7 +138,7 @@ export default function EvaluationDetail() {
                 {course?.weekday && <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{course.weekday} {course.period}</span>}
               </div>
             </div>
-                 <div className="text-right flex-shrink-0">
+            <div className="text-right flex-shrink-0">
               {evaluation.overallScore && (
                 <>
                   <div className="flex items-center gap-1">
@@ -166,7 +167,7 @@ export default function EvaluationDetail() {
           </div>
         </div>
 
-        {/* 维度得分概览 */}
+        {/* 各维度评分概览 */}
         <div className="bg-white rounded-xl p-5 mb-4" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
           <h2 className="text-sm font-semibold mb-4" style={{ color: "oklch(0.18 0.025 240)" }}>各维度评分概览</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -175,45 +176,70 @@ export default function EvaluationDetail() {
                 <div className="text-xl font-bold mb-1" style={{ color: avg ? "oklch(0.35 0.13 245)" : "oklch(0.65 0.02 240)" }}>
                   {avg ? avg.toFixed(1) : "-"}
                 </div>
-                <div className="text-xs" style={{ color: "oklch(0.52 0.025 240)" }}>{title.replace(/（.*?）/, "")}</div>
+                <div className="text-xs" style={{ color: "oklch(0.52 0.025 240)" }}>{title.replace(/[一二三四五六七八九十]、/, "")}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* 详细评分 */}
-        <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
-          <div className="px-5 py-4" style={{ background: "oklch(0.35 0.13 245)", color: "white" }}>
-            <h2 className="font-semibold text-sm">一、定量督导详细评分</h2>
-          </div>
-          {SCORE_SECTIONS.map((section) => (
-            <div key={section.title}>
-              <div className="px-5 py-3" style={{ background: "oklch(0.96 0.008 240)", borderBottom: "1px solid oklch(0.90 0.01 240)" }}>
-                <h3 className="text-xs font-semibold" style={{ color: "oklch(0.35 0.13 245)" }}>{section.title}</h3>
-              </div>
-              {section.items.map((item) => (
-                <div key={item.key} className="px-5 py-3 flex items-center justify-between gap-3" style={{ borderBottom: "1px solid oklch(0.93 0.006 240)" }}>
-                  <span className="text-sm" style={{ color: "oklch(0.30 0.04 240)" }}>{item.label}</span>
-                  <ScoreDisplay value={(evaluation as any)[item.key]} max={(item as any).max || 5} />
-                </div>
-              ))}
+        {/* 定量评分详情 - 与填写表单结构完全一致 */}
+        {SCORE_SECTIONS.map((section) => (
+          <div key={section.title} className="bg-white rounded-xl p-5 mb-4" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
+            <h3 className="text-sm font-bold mb-4" style={{ color: "oklch(0.18 0.025 240)" }}>{section.title}</h3>
+            <div className="space-y-0">
+              {section.items.map((item, idx) => {
+                const score = (evaluation as any)[item.key];
+                // 4.1 和 4.2 二选一：只显示有值的那项
+                if (item.key === 'score_research_teaching' || item.key === 'score_learning_effect') {
+                  if (!score) return null;
+                  return (
+                    <div key={item.key} className="py-3" style={{ borderBottom: idx < section.items.length - 1 ? "1px solid oklch(0.93 0.006 240)" : "none" }}>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "oklch(0.93 0.018 240)", color: "oklch(0.35 0.13 245)", fontSize: "10px" }}>已选</span>
+                            <span className="text-sm font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>{item.label}</span>
+                          </div>
+                          {item.description && <p className="text-xs mt-1 leading-relaxed ml-8" style={{ color: "oklch(0.55 0.02 240)" }}>{item.description}</p>}
+                        </div>
+                      </div>
+                      <div className="ml-8">
+                        <ScoreDisplay value={score} max={5} />
+                      </div>
+                    </div>
+                  );
+                }
+                // 选填项无值时跳过
+                if ((item as any).optional && !score) return null;
+                return (
+                  <div key={item.key} className="py-3" style={{ borderBottom: idx < section.items.length - 1 ? "1px solid oklch(0.93 0.006 240)" : "none" }}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1">
+                        <span className="text-sm font-medium" style={{ color: "oklch(0.20 0.025 240)" }}>{item.label}</span>
+                        {item.description && <p className="text-xs mt-0.5 leading-relaxed" style={{ color: "oklch(0.55 0.02 240)" }}>{item.description}</p>}
+                      </div>
+                    </div>
+                    <ScoreDisplay value={score} max={5} />
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-
-        {/* 定性评价 */}
-        <div className="bg-white rounded-xl overflow-hidden mb-4" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
-          <div className="px-5 py-4" style={{ background: "oklch(0.35 0.13 245)", color: "white" }}>
-            <h2 className="font-semibold text-sm">二、课程督导评价</h2>
           </div>
-          <div className="px-5 py-4 space-y-4">
+        ))}
+
+        {/* 二、课程亮点与评价 */}
+        <div className="bg-white rounded-xl p-5 mb-4" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
+          <h3 className="text-sm font-bold mb-4" style={{ color: "oklch(0.18 0.025 240)" }}>二、课程亮点与评价</h3>
+          <div className="space-y-4">
             {[
-              { key: "highlights", label: "最突出的教学亮点" },
-              { key: "suggestions", label: "存在不足与提升建议" },
-            ].map(({ key, label }) => (
+              { key: "highlights", label: "最突出的教学亮点", required: true },
+              { key: "suggestions", label: "存在不足与提升建议", required: true },
+            ].map(({ key, label, required }) => (
               <div key={key}>
-                <h4 className="text-xs font-semibold mb-2" style={{ color: "oklch(0.35 0.13 245)" }}>{label}</h4>
-                <div className="p-3 rounded-lg text-sm leading-relaxed" style={{ background: "oklch(0.97 0.004 240)", color: "oklch(0.25 0.025 240)", minHeight: "60px" }}>
+                <h4 className="text-sm font-medium mb-2" style={{ color: "oklch(0.20 0.025 240)" }}>
+                  {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+                </h4>
+                <div className="p-3 rounded-lg text-sm leading-relaxed" style={{ background: "oklch(0.97 0.004 240)", color: "oklch(0.25 0.025 240)", minHeight: "60px", whiteSpace: "pre-wrap" }}>
                   {(evaluation as any)[key] || <span style={{ color: "oklch(0.65 0.02 240)" }}>未填写</span>}
                 </div>
               </div>
@@ -221,27 +247,31 @@ export default function EvaluationDetail() {
           </div>
         </div>
 
-        {/* 具体建议 */}
-        <div className="bg-white rounded-xl overflow-hidden" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
-          <div className="px-5 py-4" style={{ background: "oklch(0.35 0.13 245)", color: "white" }}>
-            <h2 className="font-semibold text-sm">三、具体建议</h2>
+        {/* 三、其他建议（可填） */}
+        {((evaluation as any).improvement_suggestion || (evaluation as any).development_suggestion) && (
+          <div className="bg-white rounded-xl p-5 mb-4" style={{ border: "1px solid oklch(0.90 0.01 240)" }}>
+            <h3 className="text-sm font-bold mb-4" style={{ color: "oklch(0.18 0.025 240)" }}>三、其他建议（可填）</h3>
+            <div className="space-y-4">
+              {[
+                { key: "improvement_suggestion", label: "综合改进建议" },
+                { key: "development_suggestion", label: "发展与支持建议" },
+              ].map(({ key, label }) => {
+                const val = (evaluation as any)[key];
+                if (!val) return null;
+                return (
+                  <div key={key}>
+                    <h4 className="text-sm font-medium mb-2" style={{ color: "oklch(0.20 0.025 240)" }}>
+                      {label}<span className="text-xs ml-1" style={{ color: "oklch(0.65 0.02 240)" }}>(选填)</span>
+                    </h4>
+                    <div className="p-3 rounded-lg text-sm leading-relaxed" style={{ background: "oklch(0.97 0.004 240)", color: "oklch(0.25 0.025 240)", minHeight: "50px", whiteSpace: "pre-wrap" }}>
+                      {val}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          <div className="px-5 py-4 space-y-4">
-            {[
-              { key: "improvement_suggestion", label: "针对性改进建议" },
-              { key: "development_suggestion", label: "拓展性发展建议" },
-              { key: "dimension_suggestion", label: "针对定量评价维度的改进建议" },
-              { key: "resource_suggestion", label: "资源或支持建议" },
-            ].map(({ key, label }) => (
-              <div key={key}>
-                <h4 className="text-xs font-semibold mb-2" style={{ color: "oklch(0.35 0.13 245)" }}>{label}</h4>
-                <div className="p-3 rounded-lg text-sm leading-relaxed" style={{ background: "oklch(0.97 0.004 240)", color: "oklch(0.25 0.025 240)", minHeight: "50px" }}>
-                  {(evaluation as any)[key] || <span style={{ color: "oklch(0.65 0.02 240)" }}>未填写</span>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </DashboardLayout>
   );
