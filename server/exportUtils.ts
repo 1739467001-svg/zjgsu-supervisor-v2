@@ -351,14 +351,7 @@ function renderSingleEvaluationHtml(ev: EvaluationExportData, index: number, tot
         <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;vertical-align:top;">拓展性发展建议 <span style="color:#e53e3e;">*</span></td>
         <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:40px;">${escapeHtml(ev.development_suggestion) || '<span style="color:#bbb;">未填写</span>'}</td>
       </tr>
-      <tr>
-        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;vertical-align:top;">定量维度改进建议 <span style="color:#e53e3e;">*</span></td>
-        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:40px;">${escapeHtml(ev.dimension_suggestion) || '<span style="color:#bbb;">未填写</span>'}</td>
-      </tr>
-      <tr>
-        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;vertical-align:top;">资源或支持建议</td>
-        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:30px;">${escapeHtml(ev.resource_suggestion) || '<span style="color:#bbb;">未填写</span>'}</td>
-      </tr>
+
     </table>
   </div>`;
 
