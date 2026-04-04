@@ -99,7 +99,7 @@ export default function EvaluationList() {
         URL.revokeObjectURL(url);
         toast.info("请在浏览器中打开下载的 HTML 文件，使用 Ctrl+P 打印为 PDF");
       }
-      toast.success("PDF 报表已生成，请在打印对话框中选择\"另存为 PDF\"");
+      toast.success("评价报表已在新窗口打开，点击页面顶部【打印 / 另存为 PDF】按钮即可导出");
       setExporting(false);
     },
     onError: (err) => {
@@ -173,8 +173,8 @@ export default function EvaluationList() {
                 <DropdownMenuItem onClick={handleExportPdf} className="gap-2 cursor-pointer">
                   <FileText className="w-4 h-4" style={{ color: "oklch(0.55 0.20 25)" }} />
                   <div>
-                    <div className="text-sm font-medium">导出 PDF</div>
-                    <div className="text-xs" style={{ color: "oklch(0.55 0.02 240)" }}>复刻评价表单格式</div>
+                    <div className="text-sm font-medium">导出 HTML/PDF</div>
+                    <div className="text-xs" style={{ color: "oklch(0.55 0.02 240)" }}>在浏览器中打印为 PDF</div>
                   </div>
                 </DropdownMenuItem>
               </DropdownMenuContent>

@@ -1,6 +1,6 @@
 import XLSX from "xlsx";
 import { CourseEvaluation } from "../drizzle/schema";
-import { formatDateOnlyBJ, formatDateBJ } from "../shared/dateUtils";
+import { formatDateOnlyBJ } from "../shared/dateUtils";
 
 interface EvaluationExportData extends CourseEvaluation {
   course?: {
@@ -99,8 +99,8 @@ export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Bu
   }
 
   // 为每个专业创建一个 Sheet
-  for (const [major, evals] of majorMap) {
-    const rows = evals.map((ev) => {
+  for (const [major, evals] of Array.from(majorMap.entries())) {
+    const rows = evals.map((ev: EvaluationExportData) => {
       const c = (ev as any).course || {};
       const s = (ev as any).supervisor || {};
       const row: Record<string, any> = {
@@ -181,7 +181,7 @@ export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Bu
 }
 
 // ============================================================
-// PDF 导出：复刻督导评价表单（生成 HTML 转 PDF）
+// HTML 导出工具函数
 // ============================================================
 
 function escapeHtml(text: string | null | undefined): string {
@@ -195,76 +195,113 @@ function escapeHtml(text: string | null | undefined): string {
     .replace(/\n/g, "<br/>");
 }
 
-function renderScoreCircles(value: number | null | undefined, max = 5): string {
+function renderScoreBar(value: number | null | undefined, max = 5): string {
   if (!value) return '<span style="color:#999;font-size:12px;">未评分</span>';
-  let html = '<div style="display:flex;gap:4px;align-items:center;">';
+  const pct = (value / max) * 100;
+  const color = value >= 4 ? "#276749" : value >= 3 ? "#2c5282" : "#c05621";
+  let circles = '<div style="display:inline-flex;gap:3px;vertical-align:middle;">';
   for (let i = 1; i <= max; i++) {
     const active = i <= value;
-    html += `<div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:${active ? "#2c5282" : "#e8edf2"};color:${active ? "#fff" : "#999"};">${i}</div>`;
+    circles += `<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:10px;font-weight:700;background:${active ? color : "#e8edf2"};color:${active ? "#fff" : "#aaa"};">${i}</span>`;
   }
-  html += `<span style="font-size:12px;font-weight:600;color:#2c5282;margin-left:4px;">${value}/${max}分</span></div>`;
-  return html;
+  circles += `<span style="font-size:12px;font-weight:600;color:${color};margin-left:4px;">${value}/${max}</span></div>`;
+  return circles;
 }
 
-function renderSingleEvaluationHtml(ev: EvaluationExportData): string {
+function renderSingleEvaluationHtml(ev: EvaluationExportData, index: number, total: number): string {
   const c = (ev as any).course || {};
   const s = (ev as any).supervisor || {};
+  const isLast = index === total - 1;
+
+  // 计算各维度平均分
+  const dimAvgs = SCORE_DIMENSIONS.map((dim) => {
+    const scores = dim.items
+      .map((item) => (ev as any)[item.key])
+      .filter((v): v is number => v != null && v > 0);
+    return scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  });
 
   let html = `
-<div style="page-break-after:always;max-width:700px;margin:0 auto;font-family:'SimSun','Microsoft YaHei','PingFang SC',sans-serif;color:#1a202c;">
-  <!-- 标题 -->
-  <div style="text-align:center;margin-bottom:20px;">
-    <h1 style="font-size:20px;font-weight:bold;margin:0 0 4px 0;">浙江工商大学研究生课程督导评价表</h1>
+<div class="eval-page" style="page-break-after:${isLast ? "avoid" : "always"};max-width:760px;margin:0 auto 0 auto;font-family:'SimSun','Microsoft YaHei','PingFang SC',Arial,sans-serif;color:#1a202c;padding:20px 24px;">
+
+  <!-- 页眉 -->
+  <div style="text-align:center;border-bottom:3px double #2c5282;padding-bottom:12px;margin-bottom:16px;">
+    <div style="font-size:13px;color:#555;margin-bottom:4px;">浙江工商大学研究生院</div>
+    <h1 style="font-size:20px;font-weight:bold;margin:0;color:#1a202c;letter-spacing:2px;">研究生课程督导评价表</h1>
+    <div style="font-size:11px;color:#888;margin-top:4px;">第 ${index + 1} 份 / 共 ${total} 份</div>
   </div>
 
   <!-- 课程基本信息 -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;" border="1" cellpadding="6">
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;width:15%;">课程名称</td>
-      <td style="width:35%;">${escapeHtml(c.courseName)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;width:15%;">主讲教师</td>
-      <td style="width:35%;">${escapeHtml(c.teacher)}</td>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12.5px;" cellpadding="6">
+    <colgroup><col style="width:13%"><col style="width:37%"><col style="width:13%"><col style="width:37%"></colgroup>
+    <tr style="background:#eef2f8;">
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;">课程名称</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;font-weight:600;">${escapeHtml(c.courseName) || "—"}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;">主讲教师</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${escapeHtml(c.teacher) || "—"}</td>
     </tr>
     <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">所属学院</td>
-      <td>${escapeHtml(c.college)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">课程性质</td>
-      <td>${escapeHtml(c.courseType)}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;background:#eef2f8;">所属学院</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${escapeHtml(c.college) || "—"}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;background:#eef2f8;">课程性质</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${escapeHtml(c.courseType) || "—"}</td>
+    </tr>
+    <tr style="background:#eef2f8;">
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;">校区</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${escapeHtml(c.campus) || "—"}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;">教室</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${escapeHtml(c.classroom) || "—"}</td>
     </tr>
     <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">校区</td>
-      <td>${escapeHtml(c.campus)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">教室</td>
-      <td>${escapeHtml(c.classroom)}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;background:#eef2f8;">上课时间</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${escapeHtml(c.weekday) || ""} ${escapeHtml(c.period) || ""}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;background:#eef2f8;">选课人数</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${c.studentCount || "—"}</td>
+    </tr>
+    <tr style="background:#eef2f8;">
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;">督导专家</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${escapeHtml(s.name) || "—"}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;">听课日期</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : "—"}</td>
     </tr>
     <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">上课时间</td>
-      <td>${escapeHtml(c.weekday)} ${escapeHtml(c.period)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">学生人数</td>
-      <td>${c.studentCount || "—"}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">督导专家</td>
-      <td>${escapeHtml(s.name)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">听课日期</td>
-      <td>${ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : "—"}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">实际周次</td>
-      <td>${ev.actualWeek ? `第${ev.actualWeek}周` : "—"}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">综合评分</td>
-      <td style="font-weight:bold;color:#2c5282;">${ev.overallScore ? `${ev.overallScore.toFixed(1)}/5` : "—"}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;background:#eef2f8;">实际周次</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;">${ev.actualWeek ? `第 ${ev.actualWeek} 周` : "—"}</td>
+      <td style="font-weight:bold;border:1px solid #c8d4e8;padding:6px 8px;background:#eef2f8;">综合评分</td>
+      <td style="border:1px solid #c8d4e8;padding:6px 8px;font-weight:bold;color:${ev.overallScore && ev.overallScore >= 4 ? "#276749" : ev.overallScore && ev.overallScore >= 3 ? "#2c5282" : "#c05621"};">
+        ${ev.overallScore ? `${ev.overallScore.toFixed(1)} / 5.0 分` : "—"}
+      </td>
     </tr>
   </table>
 
-  <!-- 一、定量评分 -->
-  <h2 style="font-size:15px;font-weight:bold;color:#2c5282;margin:16px 0 10px 0;border-bottom:2px solid #2c5282;padding-bottom:4px;">一、定量督导评分</h2>
+  <!-- 维度评分概览 -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+    ${SCORE_DIMENSIONS.map((dim, i) => {
+      const avg = dimAvgs[i];
+      const color = avg && avg >= 4 ? "#276749" : avg && avg >= 3 ? "#2c5282" : "#c05621";
+      return `<div style="flex:1;min-width:120px;background:#f7fafc;border:1px solid #c8d4e8;border-radius:6px;padding:8px 10px;text-align:center;">
+        <div style="font-size:11px;color:#555;margin-bottom:4px;">${dim.title}</div>
+        <div style="font-size:18px;font-weight:bold;color:${avg ? color : "#999"};">${avg ? avg.toFixed(1) : "—"}</div>
+        <div style="font-size:10px;color:#999;">/ 5.0</div>
+      </div>`;
+    }).join("")}
+  </div>
+
+  <!-- 一、定量督导评分 -->
+  <div style="margin-bottom:14px;">
+    <h2 style="font-size:14px;font-weight:bold;color:#fff;background:#2c5282;margin:0 0 0 0;padding:7px 12px;border-radius:4px 4px 0 0;">一、定量督导评分</h2>
 `;
 
   for (const dim of SCORE_DIMENSIONS) {
-    html += `<h3 style="font-size:13px;font-weight:bold;color:#2c5282;margin:12px 0 6px 0;background:#f0f4f8;padding:6px 10px;border-radius:4px;">${dim.title}</h3>`;
-    html += '<table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;" border="1" cellpadding="5">';
-    html += '<tr style="background:#f7fafc;"><th style="width:30%;text-align:left;">评价指标</th><th style="width:40%;text-align:left;">说明</th><th style="width:30%;text-align:center;">评分</th></tr>';
+    html += `
+    <div style="margin-bottom:10px;">
+      <div style="font-size:12.5px;font-weight:bold;color:#2c5282;background:#eef2f8;padding:5px 10px;border-left:3px solid #2c5282;">${dim.title}</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;" cellpadding="0" cellspacing="0">
+        <tr style="background:#f7fafc;">
+          <th style="border:1px solid #c8d4e8;padding:5px 8px;text-align:left;width:32%;font-weight:600;">评价指标</th>
+          <th style="border:1px solid #c8d4e8;padding:5px 8px;text-align:left;width:42%;font-weight:600;">说明</th>
+          <th style="border:1px solid #c8d4e8;padding:5px 8px;text-align:center;width:26%;font-weight:600;">评分</th>
+        </tr>`;
 
     for (const item of dim.items) {
       const score = (ev as any)[item.key];
@@ -273,114 +310,300 @@ function renderSingleEvaluationHtml(ev: EvaluationExportData): string {
       // 选填项无值跳过
       if (item.key === "score_learning_task_design" && !score) continue;
 
-      html += `<tr>
-        <td style="font-weight:500;">${escapeHtml(item.label)}</td>
-        <td style="color:#555;font-size:11px;">${escapeHtml(item.description)}</td>
-        <td style="text-align:center;">${renderScoreCircles(score)}</td>
-      </tr>`;
+      html += `
+        <tr>
+          <td style="border:1px solid #c8d4e8;padding:5px 8px;font-weight:500;">${escapeHtml(item.label)}</td>
+          <td style="border:1px solid #c8d4e8;padding:5px 8px;color:#555;font-size:11px;line-height:1.4;">${escapeHtml(item.description)}</td>
+          <td style="border:1px solid #c8d4e8;padding:5px 8px;text-align:center;">${renderScoreBar(score)}</td>
+        </tr>`;
     }
-    html += "</table>";
+    html += `</table></div>`;
   }
+
+  html += `</div>`;
 
   // 二、课程亮点与评价
   html += `
-  <h2 style="font-size:15px;font-weight:bold;color:#2c5282;margin:16px 0 10px 0;border-bottom:2px solid #2c5282;padding-bottom:4px;">二、课程亮点与评价</h2>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;" border="1" cellpadding="8">
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;width:25%;">最突出的教学亮点 <span style="color:red;">*</span></td>
-      <td style="line-height:1.6;">${escapeHtml(ev.highlights) || '<span style="color:#999;">未填写</span>'}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">存在不足与提升建议 <span style="color:red;">*</span></td>
-      <td style="line-height:1.6;">${escapeHtml(ev.suggestions) || '<span style="color:#999;">未填写</span>'}</td>
-    </tr>
-  </table>`;
+  <div style="margin-bottom:14px;">
+    <h2 style="font-size:14px;font-weight:bold;color:#fff;background:#2c5282;margin:0 0 0 0;padding:7px 12px;border-radius:4px 4px 0 0;">二、课程亮点与评价</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;width:22%;vertical-align:top;">最突出的教学亮点 <span style="color:#e53e3e;">*</span></td>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:50px;">${escapeHtml(ev.highlights) || '<span style="color:#bbb;">未填写</span>'}</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;vertical-align:top;">存在不足与提升建议 <span style="color:#e53e3e;">*</span></td>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:50px;">${escapeHtml(ev.suggestions) || '<span style="color:#bbb;">未填写</span>'}</td>
+      </tr>
+    </table>
+  </div>`;
 
-  // 三、其他建议
+  // 三、具体建议
   html += `
-  <h2 style="font-size:15px;font-weight:bold;color:#2c5282;margin:16px 0 10px 0;border-bottom:2px solid #2c5282;padding-bottom:4px;">三、其他建议（可填）</h2>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;" border="1" cellpadding="8">
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;width:25%;">综合改进建议</td>
-      <td style="line-height:1.6;">${escapeHtml(ev.improvement_suggestion) || '<span style="color:#999;">未填写</span>'}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">发展与支持建议</td>
-      <td style="line-height:1.6;">${escapeHtml(ev.development_suggestion) || '<span style="color:#999;">未填写</span>'}</td>
-    </tr>
-  </table>`;
+  <div style="margin-bottom:14px;">
+    <h2 style="font-size:14px;font-weight:bold;color:#fff;background:#2c5282;margin:0 0 0 0;padding:7px 12px;border-radius:4px 4px 0 0;">三、具体建议</h2>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;width:22%;vertical-align:top;">针对性改进建议 <span style="color:#e53e3e;">*</span></td>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:40px;">${escapeHtml(ev.improvement_suggestion) || '<span style="color:#bbb;">未填写</span>'}</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;vertical-align:top;">拓展性发展建议 <span style="color:#e53e3e;">*</span></td>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:40px;">${escapeHtml(ev.development_suggestion) || '<span style="color:#bbb;">未填写</span>'}</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;vertical-align:top;">定量维度改进建议 <span style="color:#e53e3e;">*</span></td>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:40px;">${escapeHtml(ev.dimension_suggestion) || '<span style="color:#bbb;">未填写</span>'}</td>
+      </tr>
+      <tr>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;background:#eef2f8;font-weight:bold;vertical-align:top;">资源或支持建议</td>
+        <td style="border:1px solid #c8d4e8;padding:8px 10px;line-height:1.7;min-height:30px;">${escapeHtml(ev.resource_suggestion) || '<span style="color:#bbb;">未填写</span>'}</td>
+      </tr>
+    </table>
+  </div>`;
 
-  html += "</div>";
+  // 签名栏
+  html += `
+  <div style="display:flex;justify-content:space-between;margin-top:18px;padding-top:10px;border-top:1px dashed #c8d4e8;font-size:12px;color:#555;">
+    <div>督导专家签名：<span style="display:inline-block;width:100px;border-bottom:1px solid #999;"></span></div>
+    <div>评价日期：${ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : "　　　　年　　月　　日"}</div>
+    <div>评价状态：<span style="font-weight:bold;color:${ev.status === "submitted" ? "#276749" : "#c05621"};">${ev.status === "submitted" ? "已提交" : "草稿"}</span></div>
+  </div>
+
+</div>`;
+
   return html;
 }
 
-/**
- * 生成所有评价的 PDF HTML（每个评价一页）
- */
+// ============================================================
+// 生成批量评价 HTML（每份评价一页，支持打印为 PDF）
+// ============================================================
 export function generateEvaluationPdfHtml(evaluations: EvaluationExportData[]): string {
   const submitted = evaluations.filter((e) => e.status === "submitted");
 
   if (submitted.length === 0) {
-    return `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="text-align:center;padding:60px;font-family:sans-serif;"><h2>暂无已提交的评价数据</h2></body></html>`;
-  }
-
-  let html = `<!DOCTYPE html>
-<html>
+    return `<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8"/>
+  <title>督导评价报表</title>
+  <style>body{text-align:center;padding:80px;font-family:"Microsoft YaHei",sans-serif;color:#555;}</style>
+</head>
+<body>
+  <h2 style="color:#2c5282;">暂无已提交的评价数据</h2>
+  <p>请确认已有督导专家提交评价后再导出。</p>
+</body>
+</html>`;
+  }
+
+  const todayStr = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+
+  let html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>浙江工商大学研究生院督导评价报表 - ${todayStr}</title>
   <style>
-    @page { size: A4; margin: 15mm 12mm; }
-    body { margin: 0; padding: 0; }
-    table { border-color: #ccc; }
-    td, th { border-color: #ccc; }
+    @page {
+      size: A4;
+      margin: 12mm 10mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .eval-page {
+      background: #fff;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .eval-page { page-break-after: always; }
+      .eval-page:last-child { page-break-after: avoid; }
+    }
+    /* 打印工具栏（仅屏幕显示） */
+    .print-toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #2c5282;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .print-toolbar h3 { margin: 0; font-size: 15px; }
+    .print-toolbar .info { font-size: 12px; opacity: 0.85; }
+    .print-btn {
+      background: #fff;
+      color: #2c5282;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .print-btn:hover { background: #ebf4ff; }
+    .dl-btn {
+      background: transparent;
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.6);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    .dl-btn:hover { background: rgba(255,255,255,0.15); }
+    .content-wrapper {
+      padding-top: 56px;
+    }
+    @media print {
+      .print-toolbar { display: none; }
+      .content-wrapper { padding-top: 0; }
+    }
   </style>
 </head>
 <body>
+
+<!-- 打印工具栏（屏幕显示，打印时隐藏） -->
+<div class="print-toolbar no-print">
+  <div>
+    <h3>浙江工商大学研究生院 · 督导评价报表</h3>
+    <div class="info">共 ${submitted.length} 份评价 · 导出时间：${todayStr}</div>
+  </div>
+  <div style="display:flex;align-items:center;">
+    <button class="dl-btn" onclick="downloadHtml()">⬇ 下载 HTML 文件</button>
+    <button class="print-btn" onclick="window.print()">🖨 打印 / 另存为 PDF</button>
+  </div>
+</div>
+
+<div class="content-wrapper">
 `;
 
   for (let i = 0; i < submitted.length; i++) {
-    html += renderSingleEvaluationHtml(submitted[i]);
+    html += renderSingleEvaluationHtml(submitted[i], i, submitted.length);
   }
 
-  html += "</body></html>";
+  html += `
+</div>
+
+<script>
+function downloadHtml() {
+  var blob = new Blob([document.documentElement.outerHTML], {type: 'text/html;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '督导评价报表_${todayStr.replace(/\//g, "-")}.html';
+  a.click();
+}
+// 页面加载后提示用户
+window.addEventListener('load', function() {
+  console.log('督导评价报表已加载，共 ${submitted.length} 份。点击"打印 / 另存为 PDF"按钮导出 PDF。');
+});
+</script>
+</body>
+</html>`;
+
   return html;
 }
 
-/**
- * 调用 wkhtmltopdf 将评价 HTML 转为 PDF 二进制 Buffer
- */
-export async function generateEvaluationPdfBuffer(evaluations: EvaluationExportData[]): Promise<Buffer> {
-  const { execFile } = await import("child_process");
-  const { promisify } = await import("util");
-  const { writeFile, readFile, unlink } = await import("fs/promises");
-  const { tmpdir } = await import("os");
-  const { join } = await import("path");
-  const execFileAsync = promisify(execFile);
+// ============================================================
+// 生成单份评价 HTML（用于单份导出，与批量格式一致）
+// ============================================================
+export function generateSingleEvaluationHtml(ev: EvaluationExportData): string {
+  const c = (ev as any).course || {};
+  const s = (ev as any).supervisor || {};
+  const courseName = c.courseName || "督导评价";
+  const todayStr = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
 
-  const html = generateEvaluationPdfHtml(evaluations);
-  const tmpHtml = join(tmpdir(), `eval_${Date.now()}.html`);
-  const tmpPdf = join(tmpdir(), `eval_${Date.now()}.pdf`);
+  const body = renderSingleEvaluationHtml(ev, 0, 1);
 
-  try {
-    await writeFile(tmpHtml, html, "utf-8");
-    await execFileAsync("wkhtmltopdf", [
-      "--encoding", "utf-8",
-      "--page-size", "A4",
-      "--margin-top", "15mm",
-      "--margin-bottom", "15mm",
-      "--margin-left", "12mm",
-      "--margin-right", "12mm",
-      "--enable-local-file-access",
-      "--quiet",
-      tmpHtml,
-      tmpPdf,
-    ], { timeout: 60000 });
-    const pdfBuffer = await readFile(tmpPdf);
-    return pdfBuffer;
-  } finally {
-    await unlink(tmpHtml).catch(() => {});
-    await unlink(tmpPdf).catch(() => {});
-  }
+  return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"/>
+  <title>${escapeHtml(courseName)} - 督导评价</title>
+  <style>
+    @page { size: A4; margin: 12mm 10mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 0; background: #fff;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .print-toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #2c5282;
+      color: white;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .print-toolbar h3 { margin: 0; font-size: 15px; }
+    .print-btn {
+      background: #fff; color: #2c5282;
+      border: none; padding: 8px 20px;
+      border-radius: 6px; font-size: 14px;
+      font-weight: bold; cursor: pointer;
+    }
+    .print-btn:hover { background: #ebf4ff; }
+    .dl-btn {
+      background: transparent; color: #fff;
+      border: 1px solid rgba(255,255,255,0.6);
+      padding: 8px 16px; border-radius: 6px;
+      font-size: 13px; cursor: pointer; margin-right: 8px;
+    }
+    .content-wrapper { padding-top: 56px; }
+    @media print {
+      .print-toolbar { display: none; }
+      .content-wrapper { padding-top: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="print-toolbar">
+  <div>
+    <h3>${escapeHtml(courseName)} · 督导评价</h3>
+    <div style="font-size:12px;opacity:0.85;">督导专家：${escapeHtml(s.name) || "—"} · ${todayStr}</div>
+  </div>
+  <div style="display:flex;align-items:center;">
+    <button class="dl-btn" onclick="downloadHtml()">⬇ 下载 HTML</button>
+    <button class="print-btn" onclick="window.print()">🖨 打印 / 另存为 PDF</button>
+  </div>
+</div>
+<div class="content-wrapper">
+${body}
+</div>
+<script>
+function downloadHtml() {
+  var blob = new Blob([document.documentElement.outerHTML], {type: 'text/html;charset=utf-8'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '督导评价_${(courseName).replace(/[/\\?%*:|"<>]/g, "-")}.html';
+  a.click();
+}
+</script>
+</body>
+</html>`;
 }
 
 /**

@@ -98,15 +98,25 @@ export default function EvaluationDetail() {
 
   const exportPdfMutation = trpc.evaluations.exportSingleToPdf.useMutation({
     onSuccess: (data) => {
-      const bytes = Uint8Array.from(atob(data.buffer), (c) => c.charCodeAt(0));
-      const blob = new Blob([bytes], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = data.filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("PDF 导出成功！");
+      // 用新窗口打开 HTML，支持打印为 PDF
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+      } else {
+        // 弹窗被拦截时降级为下载 HTML 文件
+        const blob = new Blob([data.html], { type: "text/html;charset=utf-8" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = data.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.info("已下载 HTML 文件，请用浏览器打开后点击【打印 / 另存为 PDF】");
+      }
+      toast.success("评价表已生成，请在新窗口中点击【打印 / 另存为 PDF】");
     },
     onError: (err) => toast.error(err.message),
   });
@@ -167,7 +177,7 @@ export default function EvaluationDetail() {
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => exportPdfMutation.mutate({ evalId })}>
                     <FileText className="w-4 h-4 mr-2 text-red-500" />
-                    导出 PDF
+                    导出 HTML/PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>

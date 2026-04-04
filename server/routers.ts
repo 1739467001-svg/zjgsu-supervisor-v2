@@ -36,7 +36,7 @@ import {
   upsertUser,
 } from "./db";
 import { sdk } from "./_core/sdk";
-import { generateEvaluationExcel, generateEvaluationPdfHtml, generateEvaluationPdfBuffer } from "./exportUtils";
+import { generateEvaluationExcel, generateEvaluationPdfHtml, generateSingleEvaluationHtml } from "./exportUtils";
 
 // ============================================================
 // 角色权限中间件
@@ -475,9 +475,9 @@ export const appRouter = router({
         const allUsers = await getAllUsers();
         const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
         const enriched = { ...evaluation, course, supervisor };
-        const pdfBuffer = await generateEvaluationPdfBuffer([enriched]);
+        const html = generateSingleEvaluationHtml(enriched);
         const courseName = (course?.courseName || "evaluation").replace(/[/\\?%*:|"<>]/g, "-");
-        return { buffer: pdfBuffer.toString("base64"), filename: `评价_${courseName}.pdf` };
+        return { html, filename: `评价_${courseName}.html` };
       }),
   }),
 
