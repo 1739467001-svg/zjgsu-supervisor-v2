@@ -98,14 +98,15 @@ export default function EvaluationDetail() {
 
   const exportPdfMutation = trpc.evaluations.exportSingleToPdf.useMutation({
     onSuccess: (data) => {
-      const printWindow = window.open("", "_blank");
-      if (printWindow) {
-        printWindow.document.write(data.html);
-        printWindow.document.close();
-        printWindow.focus();
-        setTimeout(() => printWindow.print(), 600);
-      }
-      toast.success("已在新窗口打开，请选择\"另存为 PDF\"保存");
+      const bytes = Uint8Array.from(atob(data.buffer), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF 导出成功！");
     },
     onError: (err) => toast.error(err.message),
   });
