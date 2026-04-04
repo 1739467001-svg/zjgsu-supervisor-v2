@@ -110,16 +110,14 @@ export default function EvaluationList() {
 
   const handleExportExcel = () => {
     setExporting(true);
-    const params: { college?: string } = {};
-    if (collegeFilter !== "all") params.college = collegeFilter;
-    exportExcelMutation.mutate(params);
+    // 导出全部已提交评价，不受当前筛选条件限制
+    exportExcelMutation.mutate({});
   };
 
   const handleExportPdf = () => {
     setExporting(true);
-    const params: { college?: string } = {};
-    if (collegeFilter !== "all") params.college = collegeFilter;
-    exportPdfMutation.mutate(params);
+    // 导出全部已提交评价，不受当前筛选条件限制
+    exportPdfMutation.mutate({});
   };
 
   const filtered = evaluations?.filter((e) => {
@@ -159,7 +157,7 @@ export default function EvaluationList() {
                   style={{ borderColor: "oklch(0.35 0.13 245)", color: "oklch(0.35 0.13 245)" }}
                 >
                   <Download className="w-4 h-4" />
-                  {exporting ? "导出中..." : "导出报表"}
+                  {exporting ? "导出中..." : "导出全部报表"}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -167,7 +165,7 @@ export default function EvaluationList() {
                   <FileSpreadsheet className="w-4 h-4" style={{ color: "oklch(0.50 0.18 145)" }} />
                   <div>
                     <div className="text-sm font-medium">导出 Excel</div>
-                    <div className="text-xs" style={{ color: "oklch(0.55 0.02 240)" }}>按专业分类的数据表格</div>
+                    <div className="text-xs" style={{ color: "oklch(0.55 0.02 240)" }}>按学院分类，仅含已提交评价</div>
                   </div>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleExportPdf} className="gap-2 cursor-pointer">

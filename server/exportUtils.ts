@@ -75,107 +75,157 @@ const SCORE_COLUMNS = SCORE_DIMENSIONS.flatMap((dim) =>
 );
 
 // ============================================================
-// Excel 导出：按专业分类（每个专业一个 Sheet）
+// Excel 导出：按学院分类（每个学院一个 Sheet）
 // ============================================================
+
+/** 为工作表添加表头样式（蓝色背景、白色加粗字体、居中） */
+function styleHeaderRow(ws: XLSX.WorkSheet, colCount: number): void {
+  const headerStyle = {
+    font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11 },
+    fill: { fgColor: { rgb: "2C5282" }, patternType: "solid" as const },
+    alignment: { horizontal: "center" as const, vertical: "center" as const, wrapText: true },
+    border: {
+      top: { style: "thin" as const, color: { rgb: "AAAAAA" } },
+      bottom: { style: "thin" as const, color: { rgb: "AAAAAA" } },
+      left: { style: "thin" as const, color: { rgb: "AAAAAA" } },
+      right: { style: "thin" as const, color: { rgb: "AAAAAA" } },
+    },
+  };
+  const dataStyle = {
+    alignment: { vertical: "center" as const, wrapText: true },
+    border: {
+      top: { style: "thin" as const, color: { rgb: "DDDDDD" } },
+      bottom: { style: "thin" as const, color: { rgb: "DDDDDD" } },
+      left: { style: "thin" as const, color: { rgb: "DDDDDD" } },
+      right: { style: "thin" as const, color: { rgb: "DDDDDD" } },
+    },
+  };
+  const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!ws[cellAddr]) ws[cellAddr] = { t: "z", v: "" };
+      ws[cellAddr].s = R === 0 ? headerStyle : dataStyle;
+    }
+  }
+  // 冻结首行
+  ws["!freeze"] = { xSplit: 0, ySplit: 1, topLeftCell: "A2", activePane: "bottomLeft" };
+}
+
 export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Buffer {
   const workbook = XLSX.utils.book_new();
 
   // 只导出已提交的评价
   const submitted = evaluations.filter((e) => e.status === "submitted");
 
-  // 按学生专业分组
-  const majorMap = new Map<string, EvaluationExportData[]>();
+  // 按学院分组
+  const collegeMap = new Map<string, EvaluationExportData[]>();
   for (const ev of submitted) {
-    const major = (ev as any).course?.studentMajor || "未分类专业";
-    if (!majorMap.has(major)) majorMap.set(major, []);
-    majorMap.get(major)!.push(ev);
+    const college = (ev as any).course?.college || "未分类学院";
+    if (!collegeMap.has(college)) collegeMap.set(college, []);
+    collegeMap.get(college)!.push(ev);
   }
 
   // 如果没有数据，创建空表
-  if (majorMap.size === 0) {
+  if (collegeMap.size === 0) {
     const ws = XLSX.utils.aoa_to_sheet([["暂无已提交的评价数据"]]);
     XLSX.utils.book_append_sheet(workbook, ws, "无数据");
     return XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
   }
 
-  // 为每个专业创建一个 Sheet
-  for (const [major, evals] of Array.from(majorMap.entries())) {
-    const rows = evals.map((ev: EvaluationExportData) => {
+  // 定义列头（简化版，去掉学院列，因为已按学院分 Sheet）
+  const HEADER_COLS = [
+    { key: "courseName",    label: "课程名称",   width: 24 },
+    { key: "teacher",       label: "主讲教师",   width: 12 },
+    { key: "studentMajor",  label: "学生专业",   width: 20 },
+    { key: "courseType",    label: "课程性质",   width: 12 },
+    { key: "campus",        label: "校区",       width: 10 },
+    { key: "classId",       label: "班级编号",   width: 14 },
+    { key: "classroom",     label: "教室",       width: 14 },
+    { key: "weekdayPeriod", label: "上课时间",   width: 14 },
+    { key: "studentCount",  label: "学生人数",   width: 10 },
+    { key: "supervisor",    label: "督导专家",   width: 12 },
+    { key: "listenDate",    label: "听课日期",   width: 12 },
+    { key: "actualWeek",    label: "实际周次",   width: 10 },
+    { key: "overallScore",  label: "综合评分",   width: 10 },
+  ];
+
+  // 为每个学院创建一个 Sheet
+  for (const [college, evals] of Array.from(collegeMap.entries())) {
+    // 构建二维数组（第一行为表头）
+    const headerRow: string[] = [
+      ...HEADER_COLS.map((c) => c.label),
+      ...SCORE_COLUMNS.map((c) => c.label),
+      "教学亮点", "不足与建议", "综合改进建议", "发展与支持建议",
+    ];
+
+    const dataRows = evals.map((ev: EvaluationExportData) => {
       const c = (ev as any).course || {};
       const s = (ev as any).supervisor || {};
-      const row: Record<string, any> = {
-        "课程名称": c.courseName || "—",
-        "主讲教师": c.teacher || "—",
-        "所属学院": c.college || "—",
-        "课程性质": c.courseType || "—",
-        "校区": c.campus || "—",
-        "班级编号": c.classId || "—",
-        "教室": c.classroom || "—",
-        "上课时间": `${c.weekday || ""} ${c.period || ""}`.trim() || "—",
-        "学生人数": c.studentCount || "—",
-        "督导专家": s.name || "—",
-        "听课日期": ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : "—",
-        "实际周次": ev.actualWeek ? `第${ev.actualWeek}周` : "—",
-        "综合评分": ev.overallScore || "—",
-      };
-      // 添加所有评分维度列
-      for (const col of SCORE_COLUMNS) {
-        row[col.label] = (ev as any)[col.key] || "—";
-      }
-      // 文字评价
-      row["教学亮点"] = ev.highlights || "—";
-      row["不足与建议"] = ev.suggestions || "—";
-      row["综合改进建议"] = ev.improvement_suggestion || "—";
-      row["发展与支持建议"] = ev.development_suggestion || "—";
-      return row;
+      const baseRow = [
+        c.courseName || "—",
+        c.teacher || "—",
+        c.studentMajor || "—",
+        c.courseType || "—",
+        c.campus || "—",
+        c.classId || "—",
+        c.classroom || "—",
+        `${c.weekday || ""} ${c.period || ""}`.trim() || "—",
+        c.studentCount ?? "—",
+        s.name || "—",
+        ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : "—",
+        ev.actualWeek ? `第${ev.actualWeek}周` : "—",
+        ev.overallScore ?? "—",
+      ];
+      const scoreRow = SCORE_COLUMNS.map((col) => (ev as any)[col.key] ?? "—");
+      const textRow = [
+        ev.highlights || "—",
+        ev.suggestions || "—",
+        ev.improvement_suggestion || "—",
+        ev.development_suggestion || "—",
+      ];
+      return [...baseRow, ...scoreRow, ...textRow];
     });
 
-    const ws = XLSX.utils.json_to_sheet(rows);
+    const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
 
     // 设置列宽
     const colWidths: { wch: number }[] = [
-      { wch: 22 }, // 课程名称
-      { wch: 12 }, // 主讲教师
-      { wch: 18 }, // 所属学院
-      { wch: 12 }, // 课程性质
-      { wch: 10 }, // 校区
-      { wch: 14 }, // 班级编号
-      { wch: 14 }, // 教室
-      { wch: 14 }, // 上课时间
-      { wch: 10 }, // 学生人数
-      { wch: 12 }, // 督导专家
-      { wch: 12 }, // 听课日期
-      { wch: 10 }, // 实际周次
-      { wch: 10 }, // 综合评分
+      ...HEADER_COLS.map((c) => ({ wch: c.width })),
+      ...SCORE_COLUMNS.map(() => ({ wch: 12 })),
+      { wch: 36 }, { wch: 36 }, { wch: 36 }, { wch: 36 },
     ];
-    // 评分列
-    for (let i = 0; i < SCORE_COLUMNS.length; i++) {
-      colWidths.push({ wch: 14 });
-    }
-    // 文字评价列
-    colWidths.push({ wch: 30 }, { wch: 30 }, { wch: 30 }, { wch: 30 });
     ws["!cols"] = colWidths;
 
+    // 设置行高（表头行稍高）
+    ws["!rows"] = [{ hpt: 22 }];
+
+    // 应用样式
+    styleHeaderRow(ws, headerRow.length);
+
     // Sheet 名称最多 31 字符
-    const sheetName = major.length > 28 ? major.substring(0, 28) + "..." : major;
+    const sheetName = college.length > 28 ? college.substring(0, 28) + "..." : college;
     XLSX.utils.book_append_sheet(workbook, ws, sheetName);
   }
 
-  // 添加汇总 Sheet
-  const summaryRows = Array.from(majorMap.entries()).map(([major, evals]) => {
-    const scores = evals.filter((e) => e.overallScore).map((e) => e.overallScore!);
-    const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2) : "—";
-    return {
-      "专业": major,
-      "评价总数": evals.length,
-      "平均综合评分": avgScore,
-      "最高分": scores.length > 0 ? Math.max(...scores).toFixed(1) : "—",
-      "最低分": scores.length > 0 ? Math.min(...scores).toFixed(1) : "—",
-    };
+  // 添加学院汇总 Sheet
+  const summaryHeader = ["学院", "评价总数", "平均综合评分", "最高分", "最低分"];
+  const summaryData = Array.from(collegeMap.entries()).map(([college, evals]) => {
+    const scores = evals.filter((e) => e.overallScore != null).map((e) => e.overallScore!);
+    const avgScore = scores.length > 0 ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)) : "—";
+    return [
+      college,
+      evals.length,
+      avgScore,
+      scores.length > 0 ? parseFloat(Math.max(...scores).toFixed(1)) : "—",
+      scores.length > 0 ? parseFloat(Math.min(...scores).toFixed(1)) : "—",
+    ];
   });
-  const summaryWs = XLSX.utils.json_to_sheet(summaryRows);
-  summaryWs["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }];
-  XLSX.utils.book_append_sheet(workbook, summaryWs, "专业汇总");
+  const summaryWs = XLSX.utils.aoa_to_sheet([summaryHeader, ...summaryData]);
+  summaryWs["!cols"] = [{ wch: 28 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }];
+  summaryWs["!rows"] = [{ hpt: 22 }];
+  styleHeaderRow(summaryWs, 5);
+  XLSX.utils.book_append_sheet(workbook, summaryWs, "学院汇总");
 
   return XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
 }
