@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -233,12 +233,17 @@ export default function EvaluationForm() {
 
   const utils = trpc.useUtils();
 
+  // 用 ref 记录手动操作的目标状态，供 mutation onSuccess 使用
+  const pendingActionRef = useRef<'draft' | 'submitted' | null>(null);
+  // 用 ref 持有最新 form 数据，供自动保存使用（避免闭包过期）
+  const formRef = useRef(form);
+  formRef.current = form;
+
   const createMutation = trpc.evaluations.create.useMutation({
     onSuccess: (data) => {
       utils.evaluations.myEvaluations.invalidate();
+      utils.evaluations.allEvaluations.invalidate();
       utils.plans.myPlans.invalidate();
-      // 新建成功后，根据提交状态决定跳转
-      // 注意：data 中包含新建的评价 ID，草稿状态跳转到编辑页继续填写
       if ((data as any)?.id && (data as any)?.status === 'draft') {
         toast.success("草稿已保存！");
         navigate(`/evaluations/${(data as any).id}/edit`);
@@ -250,22 +255,40 @@ export default function EvaluationForm() {
     onError: (err) => toast.error(err.message),
   });
 
+  // 手动保存/提交专用 mutation
   const updateMutation = trpc.evaluations.update.useMutation({
-    onSuccess: (_, variables) => {
-      const isAutoSave = (variables.data as any).status === 'draft';
-      if (!isAutoSave) {
-        toast.success("评价已更新！");
-        utils.evaluations.myEvaluations.invalidate();
+    onSuccess: () => {
+      const action = pendingActionRef.current;
+      pendingActionRef.current = null;
+      // 强制刷新所有相关缓存，确保查看时是最新数据
+      utils.evaluations.myEvaluations.invalidate();
+      utils.evaluations.allEvaluations.invalidate();
+      if (actualEvalId > 0) {
+        utils.evaluations.getById.invalidate(actualEvalId);
+      }
+      if (action === 'draft') {
+        toast.success("草稿已保存！");
         navigate("/evaluations");
-      } else {
-        utils.evaluations.myEvaluations.invalidate();
+      } else if (action === 'submitted') {
+        toast.success("评价已提交！");
+        navigate("/evaluations");
       }
     },
-    onError: (err, variables) => {
-      const isAutoSave = (variables.data as any).status === 'draft';
-      if (!isAutoSave) {
-        toast.error(err.message);
-      }
+    onError: (err) => {
+      pendingActionRef.current = null;
+      toast.error(err.message);
+    },
+  });
+
+  // 自动保存专用 mutation（独立，不影响手动保存状态）
+  const autoSaveMutation = trpc.evaluations.update.useMutation({
+    onSuccess: () => {
+      setAutoSaveStatus('saved');
+      setLastSavedTime(new Date());
+      setTimeout(() => setAutoSaveStatus('idle'), 2000);
+    },
+    onError: () => {
+      setAutoSaveStatus('idle');
     },
   });
 
@@ -274,25 +297,18 @@ export default function EvaluationForm() {
     if (!isEdit) return;
     
     const autoSaveInterval = setInterval(() => {
+      // 如果手动操作正在进行中，跳过自动保存
+      if (pendingActionRef.current) return;
       setAutoSaveStatus('saving');
-      const payload = { ...form, courseId: courseId || (existingEval as any)?.courseId || 0, status: 'draft' as const };
-      updateMutation.mutate(
-        { id: actualEvalId, data: payload as any },
-        {
-          onSuccess: () => {
-            setAutoSaveStatus('saved');
-            setLastSavedTime(new Date());
-            setTimeout(() => setAutoSaveStatus('idle'), 2000);
-          },
-          onError: () => {
-            setAutoSaveStatus('idle');
-          },
-        }
-      );
+      const currentForm = formRef.current;
+      const existingCourseId = (existingEval as any)?.courseId || 0;
+      const payload = { ...currentForm, courseId: courseId || existingCourseId, status: 'draft' as const };
+      autoSaveMutation.mutate({ id: actualEvalId, data: payload as any });
     }, 30000);
     
     return () => clearInterval(autoSaveInterval);
-  }, [isEdit, form, evalId, existingEval, updateMutation]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, actualEvalId]);
 
   // 计算综合评分 - 所有20个定量指标的平均值
   const calculateOverallScore = (formData: typeof form): number | undefined => {
@@ -383,27 +399,12 @@ export default function EvaluationForm() {
       }
     }
 
-    const payload = { ...form, courseId: courseId || (existingEval as any)?.courseId || 0, status };
+    const existingCourseId = (existingEval as any)?.courseId || 0;
+    const payload = { ...form, courseId: courseId || existingCourseId, status };
     if (isEdit) {
-      // 如果是保存草稿，设置自动返回标志
-      if (status === "draft") {
-        updateMutation.mutate({ id: actualEvalId, data: payload as any }, {
-          onSuccess: () => {
-            toast.success("草稿已保存");
-            // 延迟100ms后返回，确保toast显示
-            setTimeout(() => navigate("/evaluations"), 100);
-          }
-        });
-      } else {
-        // 提交评价，也需要添加 onSuccess 回调
-        updateMutation.mutate({ id: actualEvalId, data: payload as any }, {
-          onSuccess: () => {
-            toast.success("评价已提交！");
-            // 延迟100ms后返回，确保toast显示
-            setTimeout(() => navigate("/evaluations"), 100);
-          }
-        });
-      }
+      // 记录操作意图，供 mutation onSuccess 使用
+      pendingActionRef.current = status;
+      updateMutation.mutate({ id: actualEvalId, data: payload as any });
     } else {
       createMutation.mutate(payload as any);
     }
