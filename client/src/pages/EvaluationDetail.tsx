@@ -1,9 +1,11 @@
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useLocation, useParams } from "wouter";
-import { ChevronLeft, Edit, Star, MapPin, Clock, User, Building2 } from "lucide-react";
+import { ChevronLeft, Edit, Star, MapPin, Clock, User, Building2, Download, FileSpreadsheet, FileText } from "lucide-react";
 import { formatDateOnlyBJ } from "@shared/dateUtils";
+import { toast } from "sonner";
 import DashboardLayout from "@/components/DashboardLayout";
 
 // 与 EvaluationForm 完全一致的评分维度定义
@@ -77,6 +79,36 @@ export default function EvaluationDetail() {
   const evalId = parseInt(params.id || "0");
   const { data: evaluation, isLoading, error } = trpc.evaluations.getById.useQuery(evalId, { enabled: evalId > 0 });
   const canEdit = ["supervisor_expert", "supervisor_leader", "admin"].includes(user?.role || "") && evaluation?.supervisorId === user?.id;
+  const canExport = ["graduate_admin", "admin", "college_secretary"].includes(user?.role || "");
+
+  const exportExcelMutation = trpc.evaluations.exportSingleToExcel.useMutation({
+    onSuccess: (data) => {
+      const bytes = Uint8Array.from(atob(data.buffer), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = data.filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Excel 导出成功！");
+    },
+    onError: (err) => toast.error(err.message),
+  });
+
+  const exportPdfMutation = trpc.evaluations.exportSingleToPdf.useMutation({
+    onSuccess: (data) => {
+      const printWindow = window.open("", "_blank");
+      if (printWindow) {
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 600);
+      }
+      toast.success("已在新窗口打开，请选择\"另存为 PDF\"保存");
+    },
+    onError: (err) => toast.error(err.message),
+  });
 
   // Handle invalid ID
   if (evalId <= 0) {
@@ -118,12 +150,34 @@ export default function EvaluationDetail() {
           <button onClick={() => navigate('/evaluations')} className="flex items-center gap-1.5 text-sm hover:opacity-70 transition-opacity" style={{ color: "oklch(0.35 0.13 245)" }}>
             <ChevronLeft className="w-4 h-4" />返回
           </button>
-          {canEdit && (
-            <Button size="sm" variant="outline" onClick={() => navigate(`/evaluations/${evalId}/edit`)}>
-              <Edit className="w-4 h-4 mr-1.5" />
-              {evaluation?.status === "submitted" ? "修改评价" : "继续评价"}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canExport && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant="outline" disabled={exportExcelMutation.isPending || exportPdfMutation.isPending}>
+                    <Download className="w-4 h-4 mr-1.5" />
+                    {(exportExcelMutation.isPending || exportPdfMutation.isPending) ? "导出中..." : "导出记录"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => exportExcelMutation.mutate({ evalId })}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" />
+                    导出 Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportPdfMutation.mutate({ evalId })}>
+                    <FileText className="w-4 h-4 mr-2 text-red-500" />
+                    导出 PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {canEdit && (
+              <Button size="sm" variant="outline" onClick={() => navigate(`/evaluations/${evalId}/edit`)}>
+                <Edit className="w-4 h-4 mr-1.5" />
+                {evaluation?.status === "submitted" ? "修改评价" : "继续评价"}
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* 课程信息 */}

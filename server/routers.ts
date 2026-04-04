@@ -435,6 +435,50 @@ export const appRouter = router({
         const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
         return { html: pdfHtml, filename: `evaluations_${todayStr}.pdf` };
       }),
+
+    // 单份评价导出（Excel）
+    exportSingleToExcel: protectedProcedure
+      .input(z.object({ evalId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user!;
+        if (!["graduate_admin", "admin", "college_secretary"].includes(user.role || "")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无导出权限" });
+        }
+        const evaluation = await getEvaluationById(input.evalId);
+        if (!evaluation) throw new TRPCError({ code: "NOT_FOUND", message: "评价记录不存在" });
+        const course = await getCourseById(evaluation.courseId);
+        if (user.role === "college_secretary" && course?.college !== user.college) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无权限导出其他学院的评价" });
+        }
+        const allUsers = await getAllUsers();
+        const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
+        const enriched = { ...evaluation, course, supervisor };
+        const buffer = generateEvaluationExcel([enriched]);
+        const courseName = (course?.courseName || "evaluation").replace(/[/\\?%*:|"<>]/g, "-");
+        return { buffer: buffer.toString("base64"), filename: `评价_${courseName}.xlsx` };
+      }),
+
+    // 单份评价导出（PDF）
+    exportSingleToPdf: protectedProcedure
+      .input(z.object({ evalId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user!;
+        if (!["graduate_admin", "admin", "college_secretary"].includes(user.role || "")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无导出权限" });
+        }
+        const evaluation = await getEvaluationById(input.evalId);
+        if (!evaluation) throw new TRPCError({ code: "NOT_FOUND", message: "评价记录不存在" });
+        const course = await getCourseById(evaluation.courseId);
+        if (user.role === "college_secretary" && course?.college !== user.college) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无权限导出其他学院的评价" });
+        }
+        const allUsers = await getAllUsers();
+        const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
+        const enriched = { ...evaluation, course, supervisor };
+        const pdfHtml = generateEvaluationPdfHtml([enriched]);
+        const courseName = (course?.courseName || "evaluation").replace(/[/\\?%*:|"<>]/g, "-");
+        return { html: pdfHtml, filename: `评价_${courseName}.pdf` };
+      }),
   }),
 
   // ============================================================
