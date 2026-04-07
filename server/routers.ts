@@ -519,6 +519,11 @@ export const appRouter = router({
     allCollegeProgress: adminProcedure.query(async () => {
       return getAllCollegeEvaluationProgress();
     }),
+    // 全校课程总数（所有已登录用户可查）
+    courseCount: protectedProcedure.query(async () => {
+      const result = await getCourses({ page: 1, pageSize: 1 });
+      return { total: result.total };
+    }),
   }),
 
   // ============================================================

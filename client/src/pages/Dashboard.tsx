@@ -45,6 +45,12 @@ export default function Dashboard() {
     enabled: role === "college_secretary",
   });
 
+  // 动态获取全校课程总数（督导专家/组长角色使用）
+  const { data: courseCountData } = trpc.stats.courseCount.useQuery(undefined, {
+    enabled: ["supervisor_expert", "supervisor_leader", "admin"].includes(role),
+  });
+  const totalCourseCount = courseCountData?.total ?? "-";
+
   const pendingPlans = plans?.filter((p) => p.status === "pending").length || 0;
   const completedEvals = myEvals?.filter((e) => e.status === "submitted").length || 0;
 
@@ -108,7 +114,7 @@ export default function Dashboard() {
               },
               {
                 label: "全校课程",
-                value: "1344",
+                value: totalCourseCount,
                 icon: <BookOpen className="w-5 h-5" />,
                 color: "oklch(0.52 0.16 200)",
                 bg: "oklch(0.93 0.018 200)",
