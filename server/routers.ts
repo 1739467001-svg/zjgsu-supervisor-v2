@@ -36,7 +36,7 @@ import {
   upsertUser,
 } from "./db";
 import { sdk } from "./_core/sdk";
-import { generateEvaluationExcel } from "./exportUtils";
+import { generateEvaluationExcel, generateEvaluationPdfHtml, generateEvaluationPdfBuffer } from "./exportUtils";
 
 // ============================================================
 // 角色权限中间件
@@ -404,6 +404,80 @@ export const appRouter = router({
         const buffer = generateEvaluationExcel(enrichedEvaluations);
         const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
         return { buffer: buffer.toString("base64"), filename: `evaluations_${todayStr}.xlsx` };
+      }),
+
+    exportToPdf: protectedProcedure
+      .input(z.object({ college: z.string().optional() }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user!;
+        // 权限：研究生院主管/admin 可导出全部，学院教学秘书只能导出本学院
+        if (!["graduate_admin", "admin", "college_secretary"].includes(user.role || "")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无导出权限" });
+        }
+
+        let evaluations;
+        if (user.role === "college_secretary") {
+          evaluations = await getAllEvaluations({ college: user.college || undefined });
+        } else {
+          evaluations = await getAllEvaluations({ college: input.college });
+        }
+
+        const allUsers = await getAllUsers();
+        const enrichedEvaluations = await Promise.all(
+          evaluations.map(async (evaluation) => {
+            const course = await getCourseById(evaluation.courseId);
+            const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
+            return { ...evaluation, course, supervisor };
+          })
+        );
+
+        const pdfHtml = generateEvaluationPdfHtml(enrichedEvaluations);
+        const todayStr = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Shanghai", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+        return { html: pdfHtml, filename: `evaluations_${todayStr}.pdf` };
+      }),
+
+    // 单份评价导出（Excel）
+    exportSingleToExcel: protectedProcedure
+      .input(z.object({ evalId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user!;
+        if (!["graduate_admin", "admin", "college_secretary"].includes(user.role || "")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无导出权限" });
+        }
+        const evaluation = await getEvaluationById(input.evalId);
+        if (!evaluation) throw new TRPCError({ code: "NOT_FOUND", message: "评价记录不存在" });
+        const course = await getCourseById(evaluation.courseId);
+        if (user.role === "college_secretary" && course?.college !== user.college) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无权限导出其他学院的评价" });
+        }
+        const allUsers = await getAllUsers();
+        const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
+        const enriched = { ...evaluation, course, supervisor };
+        const buffer = generateEvaluationExcel([enriched]);
+        const courseName = (course?.courseName || "evaluation").replace(/[/\\?%*:|"<>]/g, "-");
+        return { buffer: buffer.toString("base64"), filename: `评价_${courseName}.xlsx` };
+      }),
+
+    // 单份评价导出（PDF）
+    exportSingleToPdf: protectedProcedure
+      .input(z.object({ evalId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const user = ctx.user!;
+        if (!["graduate_admin", "admin", "college_secretary"].includes(user.role || "")) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无导出权限" });
+        }
+        const evaluation = await getEvaluationById(input.evalId);
+        if (!evaluation) throw new TRPCError({ code: "NOT_FOUND", message: "评价记录不存在" });
+        const course = await getCourseById(evaluation.courseId);
+        if (user.role === "college_secretary" && course?.college !== user.college) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "无权限导出其他学院的评价" });
+        }
+        const allUsers = await getAllUsers();
+        const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
+        const enriched = { ...evaluation, course, supervisor };
+        const pdfBuffer = await generateEvaluationPdfBuffer([enriched]);
+        const courseName = (course?.courseName || "evaluation").replace(/[/\\?%*:|"<>]/g, "-");
+        return { buffer: pdfBuffer.toString("base64"), filename: `评价_${courseName}.pdf` };
       }),
   }),
 
