@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startScheduler } from "../scheduler";
+import uploadCoursesRouter from "../uploadCourses";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -36,6 +37,8 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+  // 课程数据上传路由（仅研究生院主管）
+  app.use(uploadCoursesRouter);
   // tRPC API
   app.use(
     "/api/trpc",

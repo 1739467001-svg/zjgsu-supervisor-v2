@@ -16,6 +16,7 @@ import CollegeWorkbench from "./pages/CollegeWorkbench";
 import UserManagement from "./pages/UserManagement";
 import Notifications from "./pages/Notifications";
 import CourseProgress from "./pages/CourseProgress";
+import UploadCourses from "./pages/UploadCourses";
 import { useAuth } from "./_core/hooks/useAuth";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -49,6 +50,7 @@ function Router() {
       <Route path="/users" component={() => <ProtectedRoute component={UserManagement} />} />
       <Route path="/notifications" component={() => <ProtectedRoute component={Notifications} />} />
       <Route path="/course-progress" component={() => <ProtectedRoute component={CourseProgress} />} />
+      <Route path="/upload-courses" component={() => <ProtectedRoute component={UploadCourses} />} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

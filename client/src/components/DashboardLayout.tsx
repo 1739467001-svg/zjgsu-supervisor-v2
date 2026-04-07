@@ -34,6 +34,7 @@ import {
   GraduationCap,
   ChevronRight,
   BarChart2,
+  UploadCloud,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -81,6 +82,7 @@ function getMenuItems(role: string) {
     base.push({ icon: BarChart2, label: "评价进度", path: "/course-progress", key: "course-progress-admin" });
     base.push({ icon: Building2, label: "统计仪表盘", path: "/admin", key: "admin" });
     base.push({ icon: Users, label: "用户管理", path: "/users", key: "users" });
+    base.push({ icon: UploadCloud, label: "上传课程数据", path: "/upload-courses", key: "upload-courses" });
   }
 
   return base;
