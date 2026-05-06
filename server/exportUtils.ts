@@ -74,11 +74,42 @@ const SCORE_COLUMNS = SCORE_DIMENSIONS.flatMap((dim) =>
   dim.items.map((item) => ({ key: item.key, label: item.label.replace(/^\d+(\.\d+)?[\.\s]+/, "") }))
 );
 
+const EXCEL_SHEET_NAME_MAX_LENGTH = 31;
+const EXCEL_SHEET_NAME_INVALID_CHARS = /[\\/?*:[\]]/g;
+
+function normalizeExcelSheetName(name: string): string {
+  const sanitized = name.replace(EXCEL_SHEET_NAME_INVALID_CHARS, " ").trim();
+  return sanitized.length > 0 ? sanitized : "未命名工作表";
+}
+
+function createUniqueExcelSheetName(name: string, usedNames: Set<string>): string {
+  const baseName = normalizeExcelSheetName(name);
+  const truncatedBase = baseName.slice(0, EXCEL_SHEET_NAME_MAX_LENGTH);
+
+  if (!usedNames.has(truncatedBase)) {
+    usedNames.add(truncatedBase);
+    return truncatedBase;
+  }
+
+  let index = 2;
+  while (true) {
+    const suffix = ` (${index})`;
+    const maxBaseLength = EXCEL_SHEET_NAME_MAX_LENGTH - suffix.length;
+    const candidate = `${baseName.slice(0, maxBaseLength)}${suffix}`;
+    if (!usedNames.has(candidate)) {
+      usedNames.add(candidate);
+      return candidate;
+    }
+    index += 1;
+  }
+}
+
 // ============================================================
 // Excel 导出：按专业分类（每个专业一个 Sheet）
 // ============================================================
 export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Buffer {
   const workbook = XLSX.utils.book_new();
+  const usedSheetNames = new Set<string>();
 
   // 只导出已提交的评价
   const submitted = evaluations.filter((e) => e.status === "submitted");
@@ -94,7 +125,7 @@ export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Bu
   // 如果没有数据，创建空表
   if (majorMap.size === 0) {
     const ws = XLSX.utils.aoa_to_sheet([["暂无已提交的评价数据"]]);
-    XLSX.utils.book_append_sheet(workbook, ws, "无数据");
+    XLSX.utils.book_append_sheet(workbook, ws, createUniqueExcelSheetName("无数据", usedSheetNames));
     return XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
   }
 
@@ -156,8 +187,7 @@ export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Bu
     colWidths.push({ wch: 30 }, { wch: 30 }, { wch: 30 }, { wch: 30 });
     ws["!cols"] = colWidths;
 
-    // Sheet 名称最多 31 字符
-    const sheetName = major.length > 28 ? major.substring(0, 28) + "..." : major;
+    const sheetName = createUniqueExcelSheetName(major, usedSheetNames);
     XLSX.utils.book_append_sheet(workbook, ws, sheetName);
   }
 
@@ -175,7 +205,7 @@ export function generateEvaluationExcel(evaluations: EvaluationExportData[]): Bu
   });
   const summaryWs = XLSX.utils.json_to_sheet(summaryRows);
   summaryWs["!cols"] = [{ wch: 30 }, { wch: 12 }, { wch: 14 }, { wch: 10 }, { wch: 10 }];
-  XLSX.utils.book_append_sheet(workbook, summaryWs, "专业汇总");
+  XLSX.utils.book_append_sheet(workbook, summaryWs, createUniqueExcelSheetName("专业汇总", usedSheetNames));
 
   return XLSX.write(workbook, { bookType: "xlsx", type: "buffer" });
 }
