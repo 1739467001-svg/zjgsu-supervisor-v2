@@ -292,6 +292,13 @@ export default function EvaluationForm() {
     },
   });
 
+  const getResolvedCourseId = () => {
+    const existingCourseId = (existingEval as any)?.courseId || 0;
+    return courseId || existingCourseId;
+  };
+
+  const hasValidResolvedCourse = () => getResolvedCourseId() > 0;
+
   // 自动保存草稿 - 每30秒保存一次
   useEffect(() => {
     if (!isEdit) return;
@@ -301,8 +308,12 @@ export default function EvaluationForm() {
       if (pendingActionRef.current) return;
       setAutoSaveStatus('saving');
       const currentForm = formRef.current;
-      const existingCourseId = (existingEval as any)?.courseId || 0;
-      const payload = { ...currentForm, courseId: courseId || existingCourseId, status: 'draft' as const };
+      const resolvedCourseId = getResolvedCourseId();
+      if (resolvedCourseId <= 0) {
+        setAutoSaveStatus('idle');
+        return;
+      }
+      const payload = { ...currentForm, courseId: resolvedCourseId, status: 'draft' as const };
       autoSaveMutation.mutate({ id: actualEvalId, data: payload as any });
     }, 30000);
     
@@ -390,6 +401,12 @@ export default function EvaluationForm() {
   };
 
   const handleSubmit = (status: "draft" | "submitted") => {
+    const resolvedCourseId = getResolvedCourseId();
+    if (resolvedCourseId <= 0) {
+      toast.error("请先选择有效课程后再保存评价");
+      return;
+    }
+
     // 如果是提交状态，进行验证
     if (status === "submitted") {
       const validation = validateForm(status);
@@ -399,8 +416,7 @@ export default function EvaluationForm() {
       }
     }
 
-    const existingCourseId = (existingEval as any)?.courseId || 0;
-    const payload = { ...form, courseId: courseId || existingCourseId, status };
+    const payload = { ...form, courseId: resolvedCourseId, status };
     if (isEdit) {
       // 记录操作意图，供 mutation onSuccess 使用
       pendingActionRef.current = status;
@@ -415,6 +431,7 @@ export default function EvaluationForm() {
   // 检查提交按钮是否应该被禁用
   const isSubmitDisabled = () => {
     if (isPending) return true;
+    if (!hasValidResolvedCourse()) return true;
     const validation = validateForm("submitted");
     return !validation.valid;
   };

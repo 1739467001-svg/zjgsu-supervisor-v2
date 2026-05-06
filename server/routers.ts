@@ -69,8 +69,8 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 // 评价表单 Zod Schema
 // ============================================================
 const evaluationSchema = z.object({
-  courseId: z.number(),
-  planId: z.number().optional(),
+  courseId: z.number().int().positive("请选择有效课程"),
+  planId: z.number().int().positive().optional(),
   listenDate: z.string().optional(),
   actualWeek: z.number().optional(),
   overallScore: z.number().min(1).max(5).optional(),
@@ -105,6 +105,14 @@ const evaluationSchema = z.object({
   resource_suggestion: z.string().optional(),
   status: z.enum(["draft", "submitted"]).optional(),
 });
+
+async function ensureCourseExists(courseId: number) {
+  const course = await getCourseById(courseId);
+  if (!course) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "课程不存在或已被删除，请重新选择课程" });
+  }
+  return course;
+}
 
 export const appRouter = router({
   system: systemRouter,
@@ -257,6 +265,8 @@ export const appRouter = router({
   // ============================================================
   evaluations: router({
     create: supervisorProcedure.input(evaluationSchema).mutation(async ({ input, ctx }) => {
+      const course = await ensureCourseExists(input.courseId);
+
       const evaluation = await createEvaluation({
         ...input,
         supervisorId: ctx.user!.id,
@@ -265,8 +275,6 @@ export const appRouter = router({
 
       // 如果提交评价，发送通知
       if (input.status === "submitted" && evaluation) {
-        const course = await getCourseById(input.courseId);
-
         // 通知研究生院主管
         const admins = await getUsersByRole("graduate_admin");
         for (const admin of admins) {
@@ -310,6 +318,8 @@ export const appRouter = router({
         if (existing.supervisorId !== ctx.user!.id && !["supervisor_leader", "graduate_admin", "admin"].includes(ctx.user!.role || "")) {
           throw new TRPCError({ code: "FORBIDDEN" });
         }
+        await ensureCourseExists(input.data.courseId);
+
         await updateEvaluation(input.id, {
           ...input.data,
           listenDate: input.data.listenDate ? new Date(input.data.listenDate) : undefined,
