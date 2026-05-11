@@ -9,6 +9,9 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { startScheduler } from "../scheduler";
 import uploadCoursesRouter from "../uploadCourses";
+import { sdk } from "./sdk";
+import { getCourseById, getEvaluationById, getAllUsers } from "../db";
+import { generatePrintableHtml } from "../exportUtils";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +42,50 @@ async function startServer() {
   registerOAuthRoutes(app);
   // 课程数据上传路由（仅研究生院主管）
   app.use(uploadCoursesRouter);
+
+  // ============================================================
+  // 打印路由：/api/print/evaluation/:id
+  // 返回可在浏览器中直接打印的 HTML 页面
+  // ============================================================
+  app.get("/api/print/evaluation/:id", async (req, res) => {
+    try {
+      // 验证登录
+      let user;
+      try {
+        user = await sdk.authenticateRequest(req as any);
+      } catch {
+        return res.status(401).send("<html><body style='font-family:sans-serif;padding:60px;text-align:center;'><h2>请先登录后再访问此页面</h2></body></html>");
+      }
+      // 权限验证
+      const allowedRoles = ["graduate_admin", "admin", "college_secretary", "supervisor_expert", "supervisor_leader"];
+      if (!allowedRoles.includes(user.role || "")) {
+        return res.status(403).send("<html><body style='font-family:sans-serif;padding:60px;text-align:center;'><h2>无权限访问</h2></body></html>");
+      }
+      const evalId = parseInt(req.params.id);
+      if (!evalId || evalId <= 0) {
+        return res.status(400).send("<html><body style='font-family:sans-serif;padding:60px;text-align:center;'><h2>无效的评价 ID</h2></body></html>");
+      }
+      const evaluation = await getEvaluationById(evalId);
+      if (!evaluation) {
+        return res.status(404).send("<html><body style='font-family:sans-serif;padding:60px;text-align:center;'><h2>评价记录不存在</h2></body></html>");
+      }
+      // 学院秘书只能查看本学院
+      const course = await getCourseById(evaluation.courseId);
+      if (user.role === "college_secretary" && course?.college !== user.college) {
+        return res.status(403).send("<html><body style='font-family:sans-serif;padding:60px;text-align:center;'><h2>无权限查看其他学院的评价</h2></body></html>");
+      }
+      const allUsers = await getAllUsers();
+      const supervisor = allUsers.find((u) => u.id === evaluation.supervisorId);
+      const enriched = { ...evaluation, course, supervisor };
+      const html = generatePrintableHtml([enriched]);
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.send(html);
+    } catch (err) {
+      console.error("[Print] Error:", err);
+      res.status(500).send("<html><body style='font-family:sans-serif;padding:60px;text-align:center;'><h2>服务器错误，请稍后重试</h2></body></html>");
+    }
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

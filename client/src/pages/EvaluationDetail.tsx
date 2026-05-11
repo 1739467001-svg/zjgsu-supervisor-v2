@@ -96,20 +96,9 @@ export default function EvaluationDetail() {
     onError: (err) => toast.error(err.message),
   });
 
-  const exportPdfMutation = trpc.evaluations.exportSingleToPdf.useMutation({
-    onSuccess: (data) => {
-      const bytes = Uint8Array.from(atob(data.buffer), (c) => c.charCodeAt(0));
-      const blob = new Blob([bytes], { type: "application/pdf" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = data.filename;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success("PDF 导出成功！");
-    },
-    onError: (err) => toast.error(err.message),
-  });
+  const handlePrint = () => {
+    window.open(`/api/print/evaluation/${evalId}`, '_blank');
+  };
 
   // Handle invalid ID
   if (evalId <= 0) {
@@ -155,9 +144,9 @@ export default function EvaluationDetail() {
             {canExport && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="outline" disabled={exportExcelMutation.isPending || exportPdfMutation.isPending}>
+                  <Button size="sm" variant="outline" disabled={exportExcelMutation.isPending}>
                     <Download className="w-4 h-4 mr-1.5" />
-                    {(exportExcelMutation.isPending || exportPdfMutation.isPending) ? "导出中..." : "导出记录"}
+                    {exportExcelMutation.isPending ? "导出中..." : "导出记录"}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -165,9 +154,9 @@ export default function EvaluationDetail() {
                     <FileSpreadsheet className="w-4 h-4 mr-2 text-green-600" />
                     导出 Excel
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => exportPdfMutation.mutate({ evalId })}>
+                  <DropdownMenuItem onClick={handlePrint}>
                     <FileText className="w-4 h-4 mr-2 text-red-500" />
-                    导出 PDF
+                    打印 / 导出 PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
