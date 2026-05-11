@@ -225,122 +225,122 @@ function escapeHtml(text: string | null | undefined): string {
     .replace(/\n/g, "<br/>");
 }
 
+/**
+ * 渲染评分 —— 使用 inline-block 方式，兼容 wkhtmltopdf
+ * 显示为：● ● ● ○ ○  3/5分
+ */
 function renderScoreCircles(value: number | null | undefined, max = 5): string {
   if (!value) return '<span style="color:#999;font-size:12px;">未评分</span>';
-  let html = '<div style="display:flex;gap:4px;align-items:center;">';
+  let circles = '';
   for (let i = 1; i <= max; i++) {
     const active = i <= value;
-    html += `<div style="width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;background:${active ? "#2c5282" : "#e8edf2"};color:${active ? "#fff" : "#999"};">${i}</div>`;
+    circles += `<span style="display:inline-block;width:20px;height:20px;border-radius:50%;border:1.5px solid #2c5282;background:${active ? '#2c5282' : '#fff'};color:${active ? '#fff' : '#2c5282'};font-size:10px;font-weight:bold;text-align:center;line-height:18px;margin-right:3px;vertical-align:middle;">${i}</span>`;
   }
-  html += `<span style="font-size:12px;font-weight:600;color:#2c5282;margin-left:4px;">${value}/${max}分</span></div>`;
-  return html;
+  return `<span style="white-space:nowrap;">${circles}<span style="font-size:12px;font-weight:bold;color:#2c5282;margin-left:4px;vertical-align:middle;">${value}/${max}分</span></span>`;
 }
 
+/**
+ * 渲染单条评价的 HTML（一页）
+ */
 function renderSingleEvaluationHtml(ev: EvaluationExportData): string {
   const c = (ev as any).course || {};
   const s = (ev as any).supervisor || {};
 
+  // 基础信息表格行
+  const infoRows = [
+    ['课程名称', escapeHtml(c.courseName) || '—', '主讲教师', escapeHtml(c.teacher) || '—'],
+    ['所属学院', escapeHtml(c.college) || '—', '课程性质', escapeHtml(c.courseType) || '—'],
+    ['校区', escapeHtml(c.campus) || '—', '教室', escapeHtml(c.classroom) || '—'],
+    ['上课时间', `${escapeHtml(c.weekday) || ''} ${escapeHtml(c.period) || ''}`.trim() || '—', '学生人数', String(c.studentCount || '—')],
+    ['督导专家', escapeHtml(s.name) || '—', '听课日期', ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : '—'],
+    ['实际周次', ev.actualWeek ? `第${ev.actualWeek}周` : '—', '综合评分', ev.overallScore ? `<strong style="color:#2c5282;">${ev.overallScore.toFixed(1)}/5</strong>` : '—'],
+  ];
+
+  let infoTableRows = infoRows.map(([k1, v1, k2, v2]) =>
+    `<tr>
+      <td style="background:#eef2f7;font-weight:bold;width:13%;padding:5px 7px;border:1px solid #b0bec5;">${k1}</td>
+      <td style="width:37%;padding:5px 7px;border:1px solid #b0bec5;">${v1}</td>
+      <td style="background:#eef2f7;font-weight:bold;width:13%;padding:5px 7px;border:1px solid #b0bec5;">${k2}</td>
+      <td style="width:37%;padding:5px 7px;border:1px solid #b0bec5;">${v2}</td>
+    </tr>`
+  ).join('');
+
   let html = `
-<div style="page-break-after:always;max-width:700px;margin:0 auto;font-family:'SimSun','Microsoft YaHei','PingFang SC',sans-serif;color:#1a202c;">
+<div style="page-break-after:always;width:100%;font-family:'SimSun','Microsoft YaHei','PingFang SC',Arial,sans-serif;font-size:13px;color:#1a202c;">
   <!-- 标题 -->
-  <div style="text-align:center;margin-bottom:20px;">
-    <h1 style="font-size:20px;font-weight:bold;margin:0 0 4px 0;">浙江工商大学研究生课程督导评价表</h1>
+  <div style="text-align:center;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid #2c5282;">
+    <div style="font-size:18px;font-weight:bold;color:#1a202c;margin-bottom:2px;">浙江工商大学研究生课程督导评价表</div>
+    <div style="font-size:12px;color:#666;">浙江工商大学研究生院</div>
   </div>
 
-  <!-- 课程基本信息 -->
-  <table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:13px;" border="1" cellpadding="6">
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;width:15%;">课程名称</td>
-      <td style="width:35%;">${escapeHtml(c.courseName)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;width:15%;">主讲教师</td>
-      <td style="width:35%;">${escapeHtml(c.teacher)}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">所属学院</td>
-      <td>${escapeHtml(c.college)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">课程性质</td>
-      <td>${escapeHtml(c.courseType)}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">校区</td>
-      <td>${escapeHtml(c.campus)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">教室</td>
-      <td>${escapeHtml(c.classroom)}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">上课时间</td>
-      <td>${escapeHtml(c.weekday)} ${escapeHtml(c.period)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">学生人数</td>
-      <td>${c.studentCount || "—"}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">督导专家</td>
-      <td>${escapeHtml(s.name)}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">听课日期</td>
-      <td>${ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : "—"}</td>
-    </tr>
-    <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">实际周次</td>
-      <td>${ev.actualWeek ? `第${ev.actualWeek}周` : "—"}</td>
-      <td style="background:#f0f4f8;font-weight:bold;">综合评分</td>
-      <td style="font-weight:bold;color:#2c5282;">${ev.overallScore ? `${ev.overallScore.toFixed(1)}/5` : "—"}</td>
-    </tr>
+  <!-- 基本信息 -->
+  <table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:12px;">
+    ${infoTableRows}
   </table>
 
-  <!-- 一、定量评分 -->
-  <h2 style="font-size:15px;font-weight:bold;color:#2c5282;margin:16px 0 10px 0;border-bottom:2px solid #2c5282;padding-bottom:4px;">一、定量督导评分</h2>
+  <!-- 一、定量督导评分 -->
+  <div style="font-size:14px;font-weight:bold;color:#fff;background:#2c5282;padding:5px 10px;margin-bottom:8px;">一、定量督导评分</div>
 `;
 
   for (const dim of SCORE_DIMENSIONS) {
-    html += `<h3 style="font-size:13px;font-weight:bold;color:#2c5282;margin:12px 0 6px 0;background:#f0f4f8;padding:6px 10px;border-radius:4px;">${dim.title}</h3>`;
-    html += '<table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;" border="1" cellpadding="5">';
-    html += '<tr style="background:#f7fafc;"><th style="width:30%;text-align:left;">评价指标</th><th style="width:40%;text-align:left;">说明</th><th style="width:30%;text-align:center;">评分</th></tr>';
-
+    html += `<div style="font-size:12px;font-weight:bold;color:#2c5282;background:#dce8f5;padding:4px 8px;margin-bottom:4px;border-left:3px solid #2c5282;">${dim.title}</div>`;
+    html += `<table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:11px;">`;
+    html += `<tr style="background:#f5f8fc;">
+      <th style="width:28%;text-align:left;padding:4px 6px;border:1px solid #b0bec5;font-weight:bold;">评价指标</th>
+      <th style="width:45%;text-align:left;padding:4px 6px;border:1px solid #b0bec5;font-weight:bold;">说明</th>
+      <th style="width:27%;text-align:center;padding:4px 6px;border:1px solid #b0bec5;font-weight:bold;">评分</th>
+    </tr>`;
     for (const item of dim.items) {
       const score = (ev as any)[item.key];
       // 4.1/4.2 二选一：无值的跳过
       if ((item.key === "score_research_teaching" || item.key === "score_learning_effect") && !score) continue;
       // 选填项无值跳过
       if (item.key === "score_learning_task_design" && !score) continue;
-
       html += `<tr>
-        <td style="font-weight:500;">${escapeHtml(item.label)}</td>
-        <td style="color:#555;font-size:11px;">${escapeHtml(item.description)}</td>
-        <td style="text-align:center;">${renderScoreCircles(score)}</td>
+        <td style="padding:4px 6px;border:1px solid #b0bec5;font-weight:500;">${escapeHtml(item.label)}</td>
+        <td style="padding:4px 6px;border:1px solid #b0bec5;color:#555;font-size:10px;">${escapeHtml(item.description)}</td>
+        <td style="padding:4px 6px;border:1px solid #b0bec5;text-align:center;">${renderScoreCircles(score)}</td>
       </tr>`;
     }
-    html += "</table>";
+    html += `</table>`;
   }
 
   // 二、课程亮点与评价
   html += `
-  <h2 style="font-size:15px;font-weight:bold;color:#2c5282;margin:16px 0 10px 0;border-bottom:2px solid #2c5282;padding-bottom:4px;">二、课程亮点与评价</h2>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;" border="1" cellpadding="8">
+  <div style="font-size:14px;font-weight:bold;color:#fff;background:#2c5282;padding:5px 10px;margin-bottom:8px;margin-top:4px;">二、课程亮点与评价</div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px;">
     <tr>
-      <td style="background:#f0f4f8;font-weight:bold;width:25%;">最突出的教学亮点 <span style="color:red;">*</span></td>
-      <td style="line-height:1.6;">${escapeHtml(ev.highlights) || '<span style="color:#999;">未填写</span>'}</td>
+      <td style="background:#eef2f7;font-weight:bold;width:22%;padding:6px 8px;border:1px solid #b0bec5;vertical-align:top;">最突出的教学亮点 <span style="color:red;">*</span></td>
+      <td style="padding:6px 8px;border:1px solid #b0bec5;line-height:1.7;">${escapeHtml(ev.highlights) || '<span style="color:#999;">未填写</span>'}</td>
     </tr>
     <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">存在不足与提升建议 <span style="color:red;">*</span></td>
-      <td style="line-height:1.6;">${escapeHtml(ev.suggestions) || '<span style="color:#999;">未填写</span>'}</td>
+      <td style="background:#eef2f7;font-weight:bold;padding:6px 8px;border:1px solid #b0bec5;vertical-align:top;">存在不足与提升建议 <span style="color:red;">*</span></td>
+      <td style="padding:6px 8px;border:1px solid #b0bec5;line-height:1.7;">${escapeHtml(ev.suggestions) || '<span style="color:#999;">未填写</span>'}</td>
     </tr>
-  </table>`;
+  </table>
 
-  // 三、其他建议
-  html += `
-  <h2 style="font-size:15px;font-weight:bold;color:#2c5282;margin:16px 0 10px 0;border-bottom:2px solid #2c5282;padding-bottom:4px;">三、其他建议（可填）</h2>
-  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;font-size:12px;" border="1" cellpadding="8">
+  <!-- 三、其他建议 -->
+  <div style="font-size:14px;font-weight:bold;color:#fff;background:#2c5282;padding:5px 10px;margin-bottom:8px;">三、其他建议（可填）</div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:10px;font-size:12px;">
     <tr>
-      <td style="background:#f0f4f8;font-weight:bold;width:25%;">综合改进建议</td>
-      <td style="line-height:1.6;">${escapeHtml(ev.improvement_suggestion) || '<span style="color:#999;">未填写</span>'}</td>
+      <td style="background:#eef2f7;font-weight:bold;width:22%;padding:6px 8px;border:1px solid #b0bec5;vertical-align:top;">综合改进建议</td>
+      <td style="padding:6px 8px;border:1px solid #b0bec5;line-height:1.7;">${escapeHtml(ev.improvement_suggestion) || '<span style="color:#999;">未填写</span>'}</td>
     </tr>
     <tr>
-      <td style="background:#f0f4f8;font-weight:bold;">发展与支持建议</td>
-      <td style="line-height:1.6;">${escapeHtml(ev.development_suggestion) || '<span style="color:#999;">未填写</span>'}</td>
+      <td style="background:#eef2f7;font-weight:bold;padding:6px 8px;border:1px solid #b0bec5;vertical-align:top;">发展与支持建议</td>
+      <td style="padding:6px 8px;border:1px solid #b0bec5;line-height:1.7;">${escapeHtml(ev.development_suggestion) || '<span style="color:#999;">未填写</span>'}</td>
     </tr>
-  </table>`;
+  </table>
 
-  html += "</div>";
+  <!-- 签名栏 -->
+  <table style="width:100%;border-collapse:collapse;margin-top:16px;font-size:12px;">
+    <tr>
+      <td style="width:50%;padding:6px 8px;border:1px solid #b0bec5;">督导专家签名：</td>
+      <td style="width:50%;padding:6px 8px;border:1px solid #b0bec5;">填写日期：${ev.listenDate ? formatDateOnlyBJ(ev.listenDate) : '　　　　年　　月　　日'}</td>
+    </tr>
+  </table>
+</div>
+`;
   return html;
 }
 
@@ -349,30 +349,26 @@ function renderSingleEvaluationHtml(ev: EvaluationExportData): string {
  */
 export function generateEvaluationPdfHtml(evaluations: EvaluationExportData[]): string {
   const submitted = evaluations.filter((e) => e.status === "submitted");
-
   if (submitted.length === 0) {
     return `<!DOCTYPE html><html><head><meta charset="utf-8"/></head><body style="text-align:center;padding:60px;font-family:sans-serif;"><h2>暂无已提交的评价数据</h2></body></html>`;
   }
-
-  let html = `<!DOCTYPE html>
+  const html = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8"/>
   <style>
-    @page { size: A4; margin: 15mm 12mm; }
-    body { margin: 0; padding: 0; }
-    table { border-color: #ccc; }
-    td, th { border-color: #ccc; }
+    @page { size: A4; margin: 15mm 12mm 15mm 12mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: 'SimSun','Microsoft YaHei','PingFang SC',Arial,sans-serif; }
+    table { border-color: #b0bec5; }
+    td, th { border-color: #b0bec5; }
+    span { display: inline; }
   </style>
 </head>
 <body>
-`;
-
-  for (let i = 0; i < submitted.length; i++) {
-    html += renderSingleEvaluationHtml(submitted[i]);
-  }
-
-  html += "</body></html>";
+${submitted.map((ev) => renderSingleEvaluationHtml(ev)).join('\n')}
+</body>
+</html>`;
   return html;
 }
 
@@ -386,11 +382,9 @@ export async function generateEvaluationPdfBuffer(evaluations: EvaluationExportD
   const { tmpdir } = await import("os");
   const { join } = await import("path");
   const execFileAsync = promisify(execFile);
-
   const html = generateEvaluationPdfHtml(evaluations);
   const tmpHtml = join(tmpdir(), `eval_${Date.now()}.html`);
   const tmpPdf = join(tmpdir(), `eval_${Date.now()}.pdf`);
-
   try {
     await writeFile(tmpHtml, html, "utf-8");
     await execFileAsync("wkhtmltopdf", [
@@ -401,6 +395,7 @@ export async function generateEvaluationPdfBuffer(evaluations: EvaluationExportD
       "--margin-left", "12mm",
       "--margin-right", "12mm",
       "--enable-local-file-access",
+      "--no-stop-slow-scripts",
       "--quiet",
       tmpHtml,
       tmpPdf,
