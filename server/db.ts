@@ -294,22 +294,27 @@ export async function getListeningPlansBySupervisor(supervisorId: number) {
   const courseList = await db.select().from(courses).where(inArray(courses.id, courseIds));
   const courseMap = new Map(courseList.map((c) => [c.id, c]));
 
-  // 关联评价 ID：查询该督导专家对这些课程的评价记录
-  const planIds = plans.map((p) => p.id);
+  // 关联评价 ID 和状态：查询该督导专家对这些课程的评价记录
   const evaluationList = await db
-    .select({ id: courseEvaluations.id, courseId: courseEvaluations.courseId, supervisorId: courseEvaluations.supervisorId })
+    .select({ id: courseEvaluations.id, courseId: courseEvaluations.courseId, supervisorId: courseEvaluations.supervisorId, status: courseEvaluations.status })
     .from(courseEvaluations)
-    .where(eq(courseEvaluations.supervisorId, supervisorId));
-  // 按 courseId 建立映射（同一课程可能有多条评价，取最新的一条）
-  const evaluationMap = new Map<number, number>();
+    .where(eq(courseEvaluations.supervisorId, supervisorId))
+    .orderBy(desc(courseEvaluations.createdAt));
+  // 按 courseId 建立映射（同一课程可能有多条评价，取最新的一条，同时记录评价状态）
+  const evaluationMap = new Map<number, { id: number; status: string }>();
   for (const ev of evaluationList) {
     // 由于查询结果已按 createdAt desc 排序，第一次遇到的就是最新的
     if (!evaluationMap.has(ev.courseId)) {
-      evaluationMap.set(ev.courseId, ev.id);
+      evaluationMap.set(ev.courseId, { id: ev.id, status: ev.status || 'draft' });
     }
   }
 
-  return plans.map((p) => ({ ...p, course: courseMap.get(p.courseId), evaluationId: evaluationMap.get(p.courseId) ?? null }));
+  return plans.map((p) => ({
+    ...p,
+    course: courseMap.get(p.courseId),
+    evaluationId: evaluationMap.get(p.courseId)?.id ?? null,
+    evaluationStatus: evaluationMap.get(p.courseId)?.status ?? null,
+  }));
 }
 
 export async function updateListeningPlanStatus(planId: number, status: "pending" | "completed" | "cancelled") {

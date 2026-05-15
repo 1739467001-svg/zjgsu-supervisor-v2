@@ -238,6 +238,9 @@ export default function EvaluationForm() {
   // 用 ref 持有最新 form 数据，供自动保存使用（避免闭包过期）
   const formRef = useRef(form);
   formRef.current = form;
+  // 用 ref 持有最新 existingEval，供自动保存闭包使用（避免闭包捕获初始 undefined）
+  const existingEvalRef = useRef<any>(null);
+  existingEvalRef.current = existingEval ?? null;
 
   const createMutation = trpc.evaluations.create.useMutation({
     onSuccess: (data) => {
@@ -296,6 +299,11 @@ export default function EvaluationForm() {
     const existingCourseId = (existingEval as any)?.courseId || 0;
     return courseId || existingCourseId;
   };
+  // 供自动保存闭包使用的版本（通过 ref 读取，避免闭包过期）
+  const getResolvedCourseIdFromRef = () => {
+    const existingCourseId = existingEvalRef.current?.courseId || 0;
+    return courseId || existingCourseId;
+  };
 
   const hasValidResolvedCourse = () => getResolvedCourseId() > 0;
 
@@ -308,7 +316,8 @@ export default function EvaluationForm() {
       if (pendingActionRef.current) return;
       setAutoSaveStatus('saving');
       const currentForm = formRef.current;
-      const resolvedCourseId = getResolvedCourseId();
+      // 使用 ref 版本读取 courseId，避免闭包捕获初始 undefined 的 existingEval
+      const resolvedCourseId = getResolvedCourseIdFromRef();
       if (resolvedCourseId <= 0) {
         setAutoSaveStatus('idle');
         return;

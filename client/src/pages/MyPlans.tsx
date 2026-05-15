@@ -342,15 +342,18 @@ export default function MyPlans() {
                             <Button
                               size="sm"
                               className="h-8 px-2 sm:px-3 text-xs gap-1"
-                              onClick={() =>
-                                navigate(
-                                  `/evaluations/new/${course?.id || plan.courseId}`
-                                )
-                              }
+                              onClick={() => {
+                                // 若该课程已有草稿评价，直接跳转到续编模式；否则新建
+                                if ((plan as any).evaluationId && (plan as any).evaluationStatus === 'draft') {
+                                  navigate(`/evaluations/${(plan as any).evaluationId}/edit`);
+                                } else {
+                                  navigate(`/evaluations/new/${course?.id || plan.courseId}`);
+                                }
+                              }}
                             >
                               <ClipboardEdit className="w-3.5 h-3.5" />
                               <span className="hidden sm:inline">
-                                填写评价
+                                {(plan as any).evaluationId && (plan as any).evaluationStatus === 'draft' ? '继续评价' : '填写评价'}
                               </span>
                             </Button>
                           )}

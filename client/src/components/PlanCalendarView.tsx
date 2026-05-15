@@ -67,6 +67,8 @@ interface Plan {
   courseId: number;
   planWeek: number | null;
   status: string;
+  evaluationId?: number | null;
+  evaluationStatus?: string | null;
   course?: {
     id: number;
     courseName: string | null;
@@ -415,12 +417,17 @@ export default function PlanCalendarView({ plans, onStatusUpdate, isUpdating }: 
                   size="sm"
                   className="h-8 text-xs gap-1"
                   onClick={() => {
-                    navigate(`/evaluations/new/${selectedPlan.course?.id || selectedPlan.courseId}`);
+                    // 若该课程已有草稿评价，直接跳转到续编模式；否则新建
+                    if (selectedPlan.evaluationId && selectedPlan.evaluationStatus === 'draft') {
+                      navigate(`/evaluations/${selectedPlan.evaluationId}/edit`);
+                    } else {
+                      navigate(`/evaluations/new/${selectedPlan.course?.id || selectedPlan.courseId}`);
+                    }
                     setSelectedPlan(null);
                   }}
                 >
                   <ClipboardEdit className="w-3.5 h-3.5" />
-                  填写评价
+                  {selectedPlan.evaluationId && selectedPlan.evaluationStatus === 'draft' ? '继续评价' : '填写评价'}
                 </Button>
                 <Button
                   size="sm"
@@ -441,7 +448,14 @@ export default function PlanCalendarView({ plans, onStatusUpdate, isUpdating }: 
                 size="sm"
                 variant="outline"
                 className="h-8 text-xs gap-1"
-                onClick={() => navigate("/evaluations")}
+                onClick={() => {
+                  // 直接跳转到该评价记录，而非评价列表首页
+                  if (selectedPlan.evaluationId) {
+                    navigate(`/evaluations/${selectedPlan.evaluationId}`);
+                  } else {
+                    navigate("/evaluations");
+                  }
+                }}
               >
                 <ClipboardEdit className="w-3.5 h-3.5" />
                 查看评价
