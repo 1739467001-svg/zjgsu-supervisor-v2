@@ -404,11 +404,14 @@ async function enrichEvaluations(evals: CourseEvaluation[]) {
   const db = await getDb();
   if (!db) return evals.map((e) => ({ ...e, course: null, supervisor: null }));
 
-  const courseIds = Array.from(new Set(evals.map((e) => e.courseId)));
+  // 过滤掉无效的 courseId（<= 0），避免 inArray 查询报错或返回脏数据
+  const validCourseIds = Array.from(new Set(evals.map((e) => e.courseId).filter((id) => id > 0)));
   const supervisorIds = Array.from(new Set(evals.map((e) => e.supervisorId)));
 
   const [courseList, supervisorList] = await Promise.all([
-    db.select().from(courses).where(inArray(courses.id, courseIds)),
+    validCourseIds.length > 0
+      ? db.select().from(courses).where(inArray(courses.id, validCourseIds))
+      : Promise.resolve([]),
     db.select().from(users).where(inArray(users.id, supervisorIds)),
   ]);
 
@@ -417,7 +420,8 @@ async function enrichEvaluations(evals: CourseEvaluation[]) {
 
   return evals.map((e) => ({
     ...e,
-    course: courseMap.get(e.courseId) || null,
+    // courseId <= 0 的孤立评价，course 明确置为 null（前端会显示警告标识）
+    course: e.courseId > 0 ? (courseMap.get(e.courseId) || null) : null,
     supervisor: supervisorMap.get(e.supervisorId) || null,
   }));
 }
